@@ -5,8 +5,9 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve as resolveAbs, sep } from "node:path";
 import { config } from "../config";
-import type { FsRoot } from "../domain/types";
+import type { FsEntry, FsRoot } from "../domain/types";
 import { HttpError } from "../lib/http";
+import { readDirectory, statEntry, type RawEntry } from "../repositories/fs.repository";
 
 let rootsPromise: Promise<Map<string, FsRoot>> | null = null;
 
@@ -133,4 +134,134 @@ export function languageOf(name: string): string {
  */
 export function versionOf(modifiedAt: number, size: number): string {
   return `${Math.trunc(modifiedAt)}:${size}`;
+}
+
+export interface ListDirectoryOptions {
+  hidden?: boolean;
+}
+
+export interface DirectoryListing {
+  root: string;
+  path: string;
+  parent: string | null;
+  items: FsEntry[];
+}
+
+/** 한 디렉터리의 항목이 이보다 많으면 트리는 앞쪽만 담고 truncated 를 세운다. */
+const TREE_WIDTH_LIMIT = 2000;
+
+function toEntry(parentRelative: string, raw: RawEntry): FsEntry {
+  return {
+    name: raw.name,
+    path: parentRelative ? `${parentRelative}/${raw.name}` : raw.name,
+    type: raw.isDirectory ? "dir" : "file",
+    size: raw.size,
+    modifiedAt: raw.modifiedAt,
+    editable: raw.isDirectory ? false : isEditable(raw.name),
+  };
+}
+
+/** 디렉터리 먼저, 그다음 이름 오름차순(대소문자 무시, 숫자 자연 정렬). */
+function byTypeThenName(a: FsEntry, b: FsEntry): number {
+  if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+  return a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+}
+
+async function readEntries(
+  absolute: string,
+  relativeDir: string,
+  hidden: boolean,
+): Promise<FsEntry[]> {
+  let raw: RawEntry[];
+  try {
+    raw = await readDirectory(absolute);
+  } catch (error) {
+    if ((error as { code?: string }).code === "EACCES") throw new HttpError(403, "permission denied");
+    throw error;
+  }
+  const visible = hidden ? raw : raw.filter((entry) => !entry.name.startsWith("."));
+  return visible.map((entry) => toEntry(relativeDir, entry)).sort(byTypeThenName);
+}
+
+export async function listDirectory(
+  rootId: string,
+  relPath: string,
+  options: ListDirectoryOptions = {},
+): Promise<DirectoryListing> {
+  const { root, absolute, relative: rel } = await resolvePath(rootId, relPath);
+
+  const info = await statEntry(absolute);
+  if (!info) throw new HttpError(404, `not found: ${rel}`);
+  if (!info.isDirectory) throw new HttpError(400, `not a directory: ${rel}`);
+
+  const items = await readEntries(absolute, rel, options.hidden === true);
+  const slash = rel.lastIndexOf("/");
+  const parent = rel === "" ? null : slash === -1 ? "" : rel.slice(0, slash);
+
+  return { root: root.id, path: rel, parent, items };
+}
+
+export interface TreeOptions {
+  depth?: number;
+  hidden?: boolean;
+}
+
+async function walk(
+  node: FsEntry,
+  absolute: string,
+  remaining: number,
+  hidden: boolean,
+): Promise<void> {
+  if (remaining <= 0) {
+    // 실제로 비어 있는지 확인하려면 IO 가 한 번 더 든다. 클라이언트가 펼칠 때 /api/fs/list 로 확인한다.
+    node.hasChildren = true;
+    return;
+  }
+
+  let children: FsEntry[];
+  try {
+    children = await readEntries(absolute, node.path, hidden);
+  } catch {
+    // 권한 없는 하위 디렉터리 하나가 트리 전체를 죽이지 않게 한다.
+    node.children = [];
+    return;
+  }
+
+  if (children.length > TREE_WIDTH_LIMIT) {
+    children = children.slice(0, TREE_WIDTH_LIMIT);
+    node.truncated = true;
+  }
+  node.children = children;
+
+  await Promise.all(
+    children
+      .filter((child) => child.type === "dir")
+      .map((child) => walk(child, join(absolute, child.name), remaining - 1, hidden)),
+  );
+}
+
+export async function buildTree(
+  rootId: string,
+  relPath: string,
+  options: TreeOptions = {},
+): Promise<FsEntry> {
+  const { root, absolute, relative: rel } = await resolvePath(rootId, relPath);
+
+  const info = await statEntry(absolute);
+  if (!info) throw new HttpError(404, `not found: ${rel}`);
+  if (!info.isDirectory) throw new HttpError(400, `not a directory: ${rel}`);
+
+  const depth = Math.min(5, Math.max(1, Math.trunc(options.depth ?? 2)));
+  const name = rel === "" ? root.name : (rel.split("/").at(-1) ?? root.name);
+  const node: FsEntry = {
+    name,
+    path: rel,
+    type: "dir",
+    size: info.size,
+    modifiedAt: info.modifiedAt,
+    editable: false,
+  };
+
+  await walk(node, absolute, depth, options.hidden === true);
+  return node;
 }

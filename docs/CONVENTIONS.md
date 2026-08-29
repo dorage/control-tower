@@ -7,7 +7,7 @@
 - 런타임은 **Bun** 고정. `node`/`ts-node`/`npm`/`npx`를 쓰지 않는다.
 - 실행 `bun <file>`, 설치 `bun install`, 스크립트 `bun run <script>`, 실행기 `bunx`.
 - 서버는 `Bun.serve()`. Express 등 HTTP 프레임워크를 추가하지 않는다.
-- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우(디렉터리 순회 메타데이터, `rename` 등)에만 `node:fs/promises`를 명시적으로 import 한다.
+- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 `node:fs/promises`를 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat, `fs.service.ts`의 `realpath`.
 - 환경변수는 `Bun.env`로 읽는다. `dotenv`를 쓰지 않는다(Bun이 `.env`를 자동 로드).
 - 번들러/개발서버는 Bun의 HTML import. `vite`/`webpack`/`esbuild`를 쓰지 않는다.
 - 테스트는 `bun test` (`import { test, expect } from "bun:test"`).

@@ -121,7 +121,7 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 
 ## 파일시스템
 
-### `GET /api/fs/roots` ⬜ T-006
+### `GET /api/fs/roots` ✅
 
 탐색 가능한 루트 목록.
 
@@ -129,7 +129,7 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 { "items": [ { "id": "workspace", "name": "workspace", "path": "/home/u/workspace" } ] }
 ```
 
-### `GET /api/fs/list` ⬜ T-006
+### `GET /api/fs/list` ✅
 
 한 디렉터리의 직계 항목.
 
@@ -151,11 +151,13 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 }
 ```
 
-- 정렬: 디렉터리 우선 → 이름 오름차순(대소문자 무시).
-- `editable`은 쓰기 허용 확장자(기본 `.md`, `.markdown`)일 때만 `true`.
-- 루트 자신일 때 `parent`는 `null`.
+- 정렬: 디렉터리 우선 → 이름 오름차순(대소문자 무시, 숫자는 자연 정렬).
+- `editable`은 쓰기 허용 확장자(기본 `.md`, `.markdown`)일 때만 `true`. 디렉터리는 항상 `false`.
+- 루트 자신일 때 `parent`는 `null`. 최상위 항목의 `parent`는 `""`.
+- 깨진 심볼릭 링크처럼 `stat`이 실패하는 항목은 목록에서 조용히 빠진다.
+- `node_modules`, `.git`을 서버가 임의로 숨기지 않는다. `.git`은 숨김 규칙에 걸리고, `node_modules`는 사용자가 열 수 있어야 한다.
 
-### `GET /api/fs/tree` ⬜ T-006
+### `GET /api/fs/tree` ✅
 
 지연 로딩이 어려운 경우를 위한 얕은 재귀 트리.
 
@@ -167,6 +169,10 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 | `hidden` | | 0 | 숨김 포함 |
 
 `FsEntry`에 `children?: FsEntry[]`가 붙은 형태. `depth` 초과 디렉터리는 `children`을 생략하고 `hasChildren: true`만 준다.
+
+- 항목이 2000개를 넘는 디렉터리는 앞의 2000개만 담고 그 노드에 `truncated: true`를 붙인다.
+- 읽을 수 없는 하위 디렉터리는 `children: []`로 두고 트리 전체를 실패시키지 않는다.
+- `modifiedAt`은 정수 epoch ms다(`mtimeMs`의 소수점은 버린다). `version`과 어긋나지 않게 하기 위해서다.
 
 ### `GET /api/fs/file` ⬜ T-007
 

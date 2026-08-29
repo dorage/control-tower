@@ -11,11 +11,19 @@ export const config = {
   maxBlockChars: Number(Bun.env.MAX_BLOCK_CHARS ?? 4000),
   /** One log line per request. Off by default - this is a local tool and it gets noisy. */
   logRequests: Bun.env.LOG_REQUESTS === "1",
-  /** Roots the file browser may traverse. ":" separated. */
-  workspaceRoots: (Bun.env.WORKSPACE_ROOTS ?? `${home}/workspace`)
-    .split(":")
-    .map((value) => value.trim())
-    .filter(Boolean),
+  /**
+   * Roots the file browser may traverse. ":" separated.
+   *
+   * Read lazily so that a process which sets WORKSPACE_ROOTS after this module was first
+   * imported (notably `bun test`, which shares one module registry across test files)
+   * still sees its own value.
+   */
+  get workspaceRoots(): string[] {
+    return (Bun.env.WORKSPACE_ROOTS ?? `${home}/workspace`)
+      .split(":")
+      .map((value) => value.trim())
+      .filter(Boolean);
+  },
   /** Upper bound for a read or a written body. */
   fsMaxReadBytes: Number(Bun.env.FS_MAX_READ_BYTES ?? 2 * 1024 * 1024),
   /** Extensions we allow writing to (lowercase, dot included). */

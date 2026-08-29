@@ -30,7 +30,7 @@ control-tower/
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
     │   ├── transcript.repository.ts   ✅     ~/.claude/projects/<project>/<id>.jsonl (LRU 캐시)
-    │   └── fs.repository.ts        ⬜ T-005  워크스페이스 파일 읽기/쓰기/목록
+    │   └── fs.repository.ts        ✅        readDirectory/statEntry (node:fs 예외)
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
     │   ├── live.service.ts         ✅
@@ -38,7 +38,7 @@ control-tower/
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
     │   ├── stats.service.ts        ✅
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독
-    │   ├── fs.service.ts           ✅        루트 레지스트리 · resolvePath · isEditable/languageOf/versionOf
+    │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree · isEditable/languageOf/versionOf
     │   └── fs.service.test.ts       ✅        경로 탈출 방어 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
     │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
@@ -48,7 +48,7 @@ control-tower/
     │   ├── stats.route.ts          ⬜ T-003
     │   ├── history.route.ts        ⬜ T-003
     │   ├── events.route.ts         ⬜ T-004  SSE
-    │   └── fs.route.ts             ⬜ T-006/007/008
+    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        T-001 골격, T-009에서 확장
         ├── main.tsx                ⬜ T-009  React 루트 마운트

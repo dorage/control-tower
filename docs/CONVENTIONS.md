@@ -16,6 +16,7 @@
 
 - 런타임 의존성은 최소로 유지한다. 새 의존성을 추가하려면 해당 작업 문서에 근거를 남긴다.
 - 현재 허용된 런타임 의존성: `react`, `react-dom`.
+- 마크다운 라이브러리와 sanitizer 를 추가하지 않았다. 파서가 HTML 문자열을 만들지 않고 React 엘리먼트를 직접 만들기 때문에 sanitize 할 대상 자체가 없고, 필요한 문법이 문서 작업용으로 한정돼 있어 자체 파서(`lib/markdown.ts`)로 충분하다.
 - 브라우저에서만 필요한 라이브러리는 `src/web` 아래에서만 import 한다. 서버 코드가 브라우저 전용 모듈을 import 하지 않는다.
 
 ## 3. 언어·타입
@@ -116,7 +117,10 @@ route  →  service  →  repository  →  disk
 - 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.
 - 클래스 네이밍은 BEM 축약형 `블록__요소--변형` (예: `tree__row--active`, `editor__toolbar`).
 - 로딩/빈 상태/에러는 화면마다 새로 그리지 않고 `components/ui.tsx`의 `Spinner`/`EmptyState`/`ErrorBox`를 쓴다.
-- 사용자 입력에서 온 문자열을 `dangerouslySetInnerHTML`로 넣지 않는다. 마크다운 프리뷰는 자체 렌더러가 만든 React 엘리먼트로 출력한다(T-014).
+- 사용자 입력에서 온 문자열을 `dangerouslySetInnerHTML`로 넣지 않는다. **어디에서도 쓰지 않는다.** 마크다운은 `lib/markdown.ts`가 AST 로 파싱하고 `components/markdown-preview.tsx`가 React 엘리먼트로 만든다. HTML 문자열을 거치지 않으므로 XSS 위험이 구조적으로 없고 sanitizer 도 필요 없다.
+- 링크와 이미지 URL 은 스킴 허용목록(`https?:` `mailto:` `#` `/` `./` `../`)으로 거른다. 통과하지 못하면 링크로 만들지 않고 원문 텍스트(이미지는 `alt`)로 남긴다.
+- 외부 링크에는 `target="_blank" rel="noopener noreferrer"` 를 붙인다.
+- 지원하지 않는 마크다운 문법은 원문 그대로 텍스트로 출력한다. 문서를 깨뜨리지 않는 쪽을 택한다.
 
 ## 11. 테스트
 

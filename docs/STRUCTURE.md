@@ -60,7 +60,8 @@ control-tower/
         │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터
         │   ├── format.ts           ✅        숫자/시간/바이트 포맷
         │   ├── format.test.ts       ✅
-        │   └── markdown.ts         ⬜ T-014  마크다운 → React 엘리먼트
+        │   ├── markdown.ts         ✅        마크다운 → AST
+        │   └── markdown.test.ts     ✅
         ├── hooks/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   └── use-live.ts         ⬜ T-018  SSE 구독
@@ -68,13 +69,13 @@ control-tower/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
         │   ├── markdown-editor.tsx ⬜ T-013
-        │   ├── markdown-preview.tsx ⬜ T-014
+        │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트
         │   ├── session-list.tsx    ⬜ T-015
         │   ├── timeline.tsx        ⬜ T-016
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ✅        자리표시 (내용은 T-017)
-            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어 (에디터는 T-013)
+            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(원문·미리보기 전환). 편집은 T-013
             ├── sessions.page.tsx       ⬜ T-015
             └── session-detail.page.tsx ⬜ T-016
 ```

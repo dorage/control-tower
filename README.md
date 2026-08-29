@@ -6,8 +6,9 @@
 
 ```bash
 bun install
-bun run dev      # 개발 (HMR). 기본 http://localhost:4317
-bun run start    # 실행
+bun run dev        # 실행 (--hot). 기본 http://localhost:4317
+bun run start      # 실행 (--hot). dev 와 같다
+bun run start:prod # 핫 리로드 없이 실행
 bun test         # 테스트
 bunx tsc --noEmit  # 타입 체크
 ```

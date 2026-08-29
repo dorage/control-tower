@@ -32,10 +32,15 @@ Bun(`Bun.serve`) 하나로 API와 프론트엔드를 함께 서빙한다.
 
 ```bash
 bun install
-bun run dev      # 개발 (HMR)
-bun run start    # 실행
-bun test         # 테스트
+bun run dev        # 실행 (--hot)
+bun run start      # 실행 (--hot). dev 와 같다
+bun run start:prod # 핫 리로드 없이 실행 (NODE_ENV=production)
+bun test           # 테스트
 bunx tsc --noEmit  # 타입 체크
 ```
+
+`--hot`은 CLI 플래그로만 켤 수 있다(`bunfig.toml`에 스위치가 없다). 그래서 기본 실행 스크립트에 박아 둔다.
+서버 파일을 고치면 프로세스 재시작 없이 `fetch` 핸들러가 다시 로드되고, `src/web/*`는 `Bun.serve`의
+`development.hmr`이 따로 처리한다. 모듈 최상단 상태(캐시, `startedAt`)는 리로드 때 초기화된다.
 
 기본 주소: `http://localhost:4317`

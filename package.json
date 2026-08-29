@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun --hot index.ts",
-    "start": "bun index.ts",
+    "start": "bun --hot index.ts",
+    "start:prod": "NODE_ENV=production bun index.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

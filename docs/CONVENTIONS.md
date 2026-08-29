@@ -6,6 +6,7 @@
 
 - 런타임은 **Bun** 고정. `node`/`ts-node`/`npm`/`npx`를 쓰지 않는다.
 - 실행 `bun <file>`, 설치 `bun install`, 스크립트 `bun run <script>`, 실행기 `bunx`.
+- 서버는 항상 핫 리로드(`bun --hot`)로 띄운다. `dev`/`start` 스크립트 둘 다에 플래그가 박혀 있다. 핫 리로드가 곤란한 경우에만 `start:prod`를 쓴다.
 - 서버는 `Bun.serve()`. Express 등 HTTP 프레임워크를 추가하지 않는다.
 - 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 `node:fs/promises`를 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat, `fs.service.ts`의 `realpath`.
 - 환경변수는 `Bun.env`로 읽는다. `dotenv`를 쓰지 않는다(Bun이 `.env`를 자동 로드).

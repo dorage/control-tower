@@ -7,7 +7,7 @@
 ```
 control-tower/
 ├── index.ts                        ✅        서버 진입점 (Bun.serve 기동)
-├── package.json                    ✅        scripts: dev / start / typecheck
+├── package.json                    ✅        scripts: dev / start(둘 다 --hot) / start:prod / typecheck
 ├── tsconfig.json                   ✅        lib: ESNext + DOM (브라우저 코드용)
 ├── CLAUDE.md                       ✅        Bun 사용 규약 (에이전트용)
 ├── README.md                       ✅

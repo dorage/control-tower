@@ -174,7 +174,7 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 - 읽을 수 없는 하위 디렉터리는 `children: []`로 두고 트리 전체를 실패시키지 않는다.
 - `modifiedAt`은 정수 epoch ms다(`mtimeMs`의 소수점은 버린다). `version`과 어긋나지 않게 하기 위해서다.
 
-### `GET /api/fs/file` ⬜ T-007
+### `GET /api/fs/file` ✅
 
 파일 내용 읽기.
 
@@ -198,9 +198,11 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 }
 ```
 
-- 바이너리로 판정되면(NUL 바이트 포함) `encoding: "binary"`, `content: null`.
-- `FS_MAX_READ_BYTES`(기본 2MiB) 초과면 413.
-- `version`은 `"<modifiedAt>:<size>"`. 저장 시 낙관적 잠금 키로 쓴다.
+- 텍스트 파일이면 확장자와 무관하게 읽을 수 있다. 쓰기 허용 여부는 `editable`로만 구분한다.
+- 앞 8000바이트에 NUL 이 있으면 바이너리로 보고 `encoding: "binary"`, `content: null`, `editable: false`, `language: "text"`.
+- 크기 검사는 바이트를 읽기 **전에** `stat`으로 한다. `FS_MAX_READ_BYTES`(기본 2MiB) 초과면 413.
+- 디코딩은 `TextDecoder("utf-8", { fatal: false })`. 깨진 바이트는 U+FFFD 가 되고 500 이 나지 않는다.
+- `version`은 `"<modifiedAt>:<size>"`. 저장 시 낙관적 잠금 키로 쓴다. `/api/fs/list`의 `modifiedAt`/`size`와 같은 값이다.
 
 ### `PUT /api/fs/file` ⬜ T-008
 

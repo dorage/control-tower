@@ -1,5 +1,5 @@
 import { boolParam, HttpError, intRange, json, stringParam, withRoute } from "../lib/http";
-import { buildTree, listDirectory, listRoots } from "../services/fs.service";
+import { buildTree, listDirectory, listRoots, readFile } from "../services/fs.service";
 
 /**
  * `path` 는 `stringParam` 이 아니라 직접 읽는다. 빈 문자열은 "루트 자신"이라는 유효한 값이고,
@@ -26,6 +26,15 @@ export const fsRoutes = {
           hidden: boolParam(url, "hidden", false),
         }),
       );
+    }),
+  },
+
+  "/api/fs/file": {
+    GET: withRoute(async (req: Request) => {
+      const url = new URL(req.url);
+      const path = stringParam(url, "path");
+      if (!path) throw new HttpError(400, "path is required");
+      return json(await readFile(requireRoot(url), path));
     }),
   },
 

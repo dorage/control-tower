@@ -65,3 +65,5 @@
 2026-08-29T08:04:29Z DONE T-005 "루트 레지스트리와 resolvePath, 탈출 7종 방어 테스트"
 2026-08-29T08:06:48Z START T-006
 2026-08-29T08:06:48Z DONE T-006 "/api/fs/roots·list·tree"
+2026-08-29T08:07:47Z START T-007
+2026-08-29T08:07:47Z DONE T-007 "GET /api/fs/file, 바이너리 판정과 크기 상한"

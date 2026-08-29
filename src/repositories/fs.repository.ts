@@ -58,3 +58,8 @@ export async function readDirectory(absolute: string): Promise<RawEntry[]> {
   );
   return entries.filter((entry): entry is RawEntry => entry !== null);
 }
+
+/** 바이너리 판정을 해야 하므로 텍스트가 아니라 바이트로 읽는다. */
+export async function readFileBytes(absolute: string): Promise<Uint8Array> {
+  return new Uint8Array(await Bun.file(absolute).arrayBuffer());
+}

@@ -5,9 +5,9 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve as resolveAbs, sep } from "node:path";
 import { config } from "../config";
-import type { FsEntry, FsRoot } from "../domain/types";
+import type { FsEntry, FsFile, FsRoot } from "../domain/types";
 import { HttpError } from "../lib/http";
-import { readDirectory, statEntry, type RawEntry } from "../repositories/fs.repository";
+import { readDirectory, readFileBytes, statEntry, type RawEntry } from "../repositories/fs.repository";
 
 let rootsPromise: Promise<Map<string, FsRoot>> | null = null;
 
@@ -264,4 +264,53 @@ export async function buildTree(
 
   await walk(node, absolute, depth, options.hidden === true);
   return node;
+}
+
+/**
+ * 앞쪽 8000바이트 안에 NUL 이 하나라도 있으면 바이너리로 본다. git 이 쓰는 휴리스틱이며
+ * UTF-8 텍스트에는 NUL 이 나타나지 않는다. UTF-16 파일은 바이너리로 걸린다 - 의도된 동작이다.
+ */
+function looksBinary(bytes: Uint8Array): boolean {
+  const limit = Math.min(bytes.length, 8000);
+  for (let i = 0; i < limit; i++) if (bytes[i] === 0) return true;
+  return false;
+}
+
+export async function readFile(rootId: string, relPath: string): Promise<FsFile> {
+  const { root, absolute, relative: rel } = await resolvePath(rootId, relPath);
+  if (rel === "") throw new HttpError(400, "path is required");
+
+  const info = await statEntry(absolute);
+  if (!info) throw new HttpError(404, `not found: ${rel}`);
+  if (info.isDirectory) throw new HttpError(400, `is a directory: ${rel}`);
+
+  // 바이트를 읽기 전에 크기를 본다. 200MB 를 메모리에 올린 뒤 거절하면 의미가 없다.
+  if (info.size > config.fsMaxReadBytes) {
+    throw new HttpError(413, `file too large: ${info.size} bytes (max ${config.fsMaxReadBytes})`);
+  }
+
+  let bytes: Uint8Array;
+  try {
+    bytes = await readFileBytes(absolute);
+  } catch (error) {
+    if ((error as { code?: string }).code === "EACCES") throw new HttpError(403, "permission denied");
+    throw error;
+  }
+
+  const name = rel.split("/").at(-1) ?? rel;
+  const binary = looksBinary(bytes);
+
+  return {
+    root: root.id,
+    path: rel,
+    name,
+    size: info.size,
+    modifiedAt: info.modifiedAt,
+    version: versionOf(info.modifiedAt, info.size),
+    language: binary ? "text" : languageOf(name),
+    editable: !binary && isEditable(name),
+    encoding: binary ? "binary" : "utf-8",
+    // fatal: false - 깨진 바이트는 U+FFFD 가 된다. 잘못된 인코딩으로 500 을 내지 않는다.
+    content: binary ? null : new TextDecoder("utf-8", { fatal: false }).decode(bytes),
+  };
 }

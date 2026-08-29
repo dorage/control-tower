@@ -30,7 +30,7 @@ control-tower/
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
     │   ├── transcript.repository.ts   ✅     ~/.claude/projects/<project>/<id>.jsonl (LRU 캐시)
-    │   └── fs.repository.ts        ✅        readDirectory/statEntry (node:fs 예외)
+    │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
     │   ├── live.service.ts         ✅
@@ -48,7 +48,7 @@ control-tower/
     │   ├── stats.route.ts          ⬜ T-003
     │   ├── history.route.ts        ⬜ T-003
     │   ├── events.route.ts         ⬜ T-004  SSE
-    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree
+    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        T-001 골격, T-009에서 확장
         ├── main.tsx                ⬜ T-009  React 루트 마운트

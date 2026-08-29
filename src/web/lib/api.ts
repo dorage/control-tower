@@ -1,4 +1,14 @@
-import type { FsEntry, FsFile, FsRoot, FsWriteResult } from "../../domain/types";
+import type {
+  FsEntry,
+  FsFile,
+  FsRoot,
+  FsWriteResult,
+  HistoryEntry,
+  ProjectSummary,
+  SessionSummary,
+  Stats,
+  Timeline,
+} from "../../domain/types";
 
 export interface Page<T> {
   total: number;
@@ -62,9 +72,39 @@ export interface DirectoryListing {
   items: FsEntry[];
 }
 
+export interface SessionListOptions {
+  projectId?: string | null;
+  q?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TimelineOptions {
+  limit?: number;
+  offset?: number;
+  events?: boolean;
+  sidechain?: boolean;
+}
+
 export const api = {
   health: () =>
     request<{ ok: boolean; uptimeMs: number; version: string; claudeDir: string }>("/api/health"),
+
+  stats: () => request<Stats>("/api/stats"),
+
+  projects: (opts: { limit?: number; offset?: number } = {}) =>
+    request<Page<ProjectSummary>>(`/api/projects${query({ ...opts })}`),
+
+  sessions: (opts: SessionListOptions = {}) =>
+    request<Page<SessionSummary>>(`/api/sessions${query({ ...opts })}`),
+
+  session: (id: string) => request<SessionSummary>(`/api/sessions/${encodeURIComponent(id)}`),
+
+  timeline: (id: string, opts: TimelineOptions = {}) =>
+    request<Timeline>(`/api/sessions/${encodeURIComponent(id)}/timeline${query({ ...opts })}`),
+
+  history: (opts: { project?: string | null; sessionId?: string | null; limit?: number } = {}) =>
+    request<Page<HistoryEntry>>(`/api/history${query({ ...opts })}`),
 
   fsRoots: () => request<{ items: FsRoot[] }>("/api/fs/roots"),
 
@@ -88,6 +128,4 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-
-  // 세션·프로젝트·통계·히스토리 함수는 T-003 이 엔드포인트를 만들 때 여기에 추가한다.
 };

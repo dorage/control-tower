@@ -38,7 +38,8 @@ control-tower/
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
     │   ├── stats.service.ts        ✅
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독
-    │   └── fs.service.ts           ⬜ T-005  경로 해석·보안·목록/트리/읽기/쓰기
+    │   ├── fs.service.ts           ✅        루트 레지스트리 · resolvePath · isEditable/languageOf/versionOf
+    │   └── fs.service.test.ts       ✅        경로 탈출 방어 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
     │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
     │   ├── health.route.ts         ✅        /api/health
@@ -110,6 +111,6 @@ routes  →  services  →  repositories  →  디스크
 | `WATCH_INTERVAL_MS` | `1500` | 변경 감지 폴링 주기 |
 | `MAX_BLOCK_CHARS` | `4000` | 타임라인 블록당 최대 문자 수 |
 | `LOG_REQUESTS` | `0` | `1`이면 요청당 한 줄 로그 |
-| `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분 (T-005) |
-| `FS_MAX_READ_BYTES` | `2097152` | 파일 읽기 상한 (T-005) |
-| `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 (T-005) |
+| `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분. 없는 경로는 조용히 제외 |
+| `FS_MAX_READ_BYTES` | `2097152` | 파일 읽기/쓰기 본문 상한 |
+| `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 |

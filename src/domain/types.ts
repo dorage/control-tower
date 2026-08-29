@@ -161,3 +161,53 @@ export interface Stats {
   activityLast24h: number;
   updatedAt: string;
 }
+
+/** A directory the file browser is allowed to traverse. */
+export interface FsRoot {
+  /** URL-safe identifier. */
+  id: string;
+  name: string;
+  /** Absolute path with symlinks resolved. */
+  path: string;
+}
+
+export interface FsEntry {
+  name: string;
+  /** Relative to the root. The root itself is "". Always POSIX separators. */
+  path: string;
+  type: "file" | "dir";
+  size: number;
+  modifiedAt: number;
+  /** Whether the extension is on the write allowlist (directories are always false). */
+  editable: boolean;
+  /** Only filled in by tree responses. */
+  children?: FsEntry[];
+  hasChildren?: boolean;
+  /** Set when a directory had more entries than the tree is willing to walk. */
+  truncated?: boolean;
+}
+
+export interface FsFile {
+  root: string;
+  path: string;
+  name: string;
+  size: number;
+  modifiedAt: number;
+  /** Optimistic locking key: `${modifiedAt}:${size}`. */
+  version: string;
+  /** Highlighting language guessed from the extension; "text" when unknown. */
+  language: string;
+  editable: boolean;
+  encoding: "utf-8" | "binary";
+  /** null when binary. */
+  content: string | null;
+}
+
+export interface FsWriteResult {
+  root: string;
+  path: string;
+  size: number;
+  modifiedAt: number;
+  version: string;
+  created: boolean;
+}

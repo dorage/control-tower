@@ -11,6 +11,18 @@ export const config = {
   maxBlockChars: Number(Bun.env.MAX_BLOCK_CHARS ?? 4000),
   /** One log line per request. Off by default - this is a local tool and it gets noisy. */
   logRequests: Bun.env.LOG_REQUESTS === "1",
+  /** Roots the file browser may traverse. ":" separated. */
+  workspaceRoots: (Bun.env.WORKSPACE_ROOTS ?? `${home}/workspace`)
+    .split(":")
+    .map((value) => value.trim())
+    .filter(Boolean),
+  /** Upper bound for a read or a written body. */
+  fsMaxReadBytes: Number(Bun.env.FS_MAX_READ_BYTES ?? 2 * 1024 * 1024),
+  /** Extensions we allow writing to (lowercase, dot included). */
+  writableExtensions: (Bun.env.FS_WRITABLE_EXTENSIONS ?? ".md,.markdown")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
 } as const;
 
 export const paths = {

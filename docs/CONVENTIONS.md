@@ -88,9 +88,11 @@ route  →  service  →  repository  →  disk
 
 ## 9. 보안
 
-- 파일시스템 API는 **설정된 루트 밖으로 절대 나가지 않는다.** 경로 해석은 `src/services/fs.service.ts`의 단일 함수를 통해서만 한다(T-005).
-- 심볼릭 링크는 실경로(`realpath`)로 해석한 뒤 루트 포함 여부를 재검사한다.
-- 쓰기는 확장자 허용목록(기본 `.md`, `.markdown`)에 한정한다.
+- 파일시스템 API는 **설정된 루트 밖으로 절대 나가지 않는다.** 디스크에 닿는 모든 경로는 `src/services/fs.service.ts`의 `resolvePath(rootId, relPath)` 하나만 통과한다. 이 함수를 우회하는 경로 조립을 어디에도 두지 않는다.
+- `resolvePath` 절차(순서를 지킨다): ① `rootId` 없으면 400 → ② 미등록 루트면 403 → ③ `\0` 포함이면 400 → ④ 절대경로면 400 → ⑤ `resolve()`로 `..` 정규화 → ⑥ `candidate === root.path || candidate.startsWith(root.path + sep)` 포함 검사(구분자를 붙이지 않으면 `/home/u/work-secret`이 `/home/u/work`를 통과한다) → ⑦ `realpath` 결과로 ⑥을 한 번 더(없는 파일이면 부모 기준, 부모도 없으면 404).
+- 쿼리 파라미터는 `URLSearchParams`가 이미 퍼센트 디코딩한다. `decodeURIComponent`를 **중복 호출하지 않는다** — 이중 디코딩은 `%252e%252e` 우회를 만든다.
+- 쓰기는 확장자 허용목록(기본 `.md`, `.markdown`)에 한정한다. 판정은 `isEditable(name)` 하나로 한다.
+- 낙관적 잠금 키는 `versionOf(modifiedAt, size)`로만 만든다. 읽기와 쓰기가 같은 함수를 쓰지 않으면 `mtimeMs` 소수점 때문에 미묘하게 어긋난다.
 - 서버는 기본적으로 로컬 네트워크용이다. 인증은 범위 밖이며, 외부 노출 시 별도 작업으로 다룬다.
 
 ## 10. 프론트엔드

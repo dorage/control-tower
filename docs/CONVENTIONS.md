@@ -101,7 +101,11 @@ route  →  service  →  repository  →  disk
 
 - 함수 컴포넌트 + 훅만. 클래스 컴포넌트 없음.
 - 상태는 지역 상태 우선. 전역 상태 라이브러리를 추가하지 않는다. 공유가 필요하면 `useSyncExternalStore` 기반 작은 스토어를 `src/web/lib`에 둔다.
-- 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다.
+- 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
+- 브라우저는 서버 타입을 재정의하지 않는다. `src/domain/types.ts`에서 `import type`으로 가져온다.
+- 쿼리 문자열은 `URLSearchParams`로만 조립한다. 문자열 템플릿으로 붙이지 않는다.
+- HTTP 에러는 `ApiError(status, message, detail)`로 던진다. 상태 코드와 서버가 준 추가 필드(`currentVersion` 등)를 잃지 않기 위해서다.
+- 포맷터는 잘못된 입력에 대해 던지지 않고 `"-"`를 반환한다. 세션 데이터에는 타임스탬프가 없는 레코드가 흔하다.
 - CSS는 `src/web/styles.css` 한 파일 + CSS 커스텀 프로퍼티 토큰. CSS-in-JS나 Tailwind를 도입하지 않는다.
 - 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다. hex 리터럴은 `:root`와 `@media (prefers-color-scheme: dark)` 블록 안에만 존재한다.
 - 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.

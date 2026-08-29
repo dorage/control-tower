@@ -56,12 +56,13 @@ control-tower/
         ├── app.tsx                 ⬜ T-011  라우팅 + 셸
         ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
         ├── lib/
-        │   ├── api.ts              ⬜ T-010  fetch 래퍼 + 엔드포인트 함수
+        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs 엔드포인트 (세션은 T-003에서 추가)
         │   ├── router.ts           ⬜ T-011  history API 기반 미니 라우터
-        │   ├── format.ts           ⬜ T-010  숫자/시간/바이트 포맷
+        │   ├── format.ts           ✅        숫자/시간/바이트 포맷
+        │   ├── format.test.ts       ✅
         │   └── markdown.ts         ⬜ T-014  마크다운 → React 엘리먼트
         ├── hooks/
-        │   ├── use-query.ts        ⬜ T-010  비동기 데이터 로딩
+        │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   └── use-live.ts         ⬜ T-018  SSE 구독
         ├── components/
         │   ├── app-shell.tsx       ⬜ T-011  사이드바 + 콘텐츠 레이아웃

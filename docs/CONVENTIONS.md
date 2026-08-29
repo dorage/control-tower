@@ -52,6 +52,8 @@ route  →  service  →  repository  →  disk
 - `src/domain/types.ts`는 타입만 export 한다. 로직을 두지 않는다.
 - `src/lib/*`는 도메인 지식이 없는 순수 유틸만 둔다.
 - `src/web/*`는 서버 코드를 import 하지 않는다. 단, `src/domain/types.ts`의 **타입만** `import type`으로 공유한다.
+- 라우트 모듈은 **경로 → 메서드별 핸들러 레코드**를 named export 한다(`export const xRoutes = { "/api/x": { GET: ... } }`). 함수를 직접 주지 않는다 — 명시하지 않은 메서드에 대해 Bun이 405를 돌려주게 하기 위해서다.
+- 라우트 조합은 `src/routes/index.ts`에서**만** 한다. 새 라우트 모듈을 추가할 때 다른 파일을 건드리지 않는다.
 
 ## 6. 코드 스타일
 

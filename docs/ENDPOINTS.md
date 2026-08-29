@@ -27,7 +27,7 @@
 
 ## 시스템
 
-### `GET /api/health` ⬜ T-001
+### `GET /api/health` ✅
 
 서버 생존 확인.
 
@@ -242,7 +242,7 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 
 | 경로 | 상태 | 설명 |
 | --- | --- | --- |
-| `/` | ⬜ T-001 | `src/web/index.html` (번들된 SPA) |
-| `/*` | ⬜ T-001 | SPA 폴백. `/api/*`보다 낮은 우선순위 |
+| `/` | ✅ | `src/web/index.html` (번들된 SPA) |
+| `/*` | ✅ | SPA 폴백. `/api/*`보다 낮은 우선순위 |
 
 클라이언트 라우트(T-011): `/`(대시보드) · `/files` · `/sessions` · `/sessions/:id`

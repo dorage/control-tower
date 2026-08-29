@@ -6,8 +6,8 @@
 
 ```
 control-tower/
-├── index.ts                        ⬜ T-001  서버 진입점 (Bun.serve 기동)
-├── package.json                    ✅        scripts는 T-001에서 추가
+├── index.ts                        ✅        서버 진입점 (Bun.serve 기동)
+├── package.json                    ✅        scripts: dev / start / typecheck
 ├── tsconfig.json                   ✅
 ├── CLAUDE.md                       ✅        Bun 사용 규약 (에이전트용)
 ├── README.md                       ✅
@@ -40,8 +40,8 @@ control-tower/
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독
     │   └── fs.service.ts           ⬜ T-005  경로 해석·보안·목록/트리/읽기/쓰기
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
-    │   ├── index.ts                ⬜ T-001  라우트 컴포지션
-    │   ├── health.route.ts         ⬜ T-001
+    │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
+    │   ├── health.route.ts         ✅        /api/health
     │   ├── session.route.ts        ⬜ T-003
     │   ├── project.route.ts        ⬜ T-003
     │   ├── stats.route.ts          ⬜ T-003
@@ -49,7 +49,7 @@ control-tower/
     │   ├── events.route.ts         ⬜ T-004  SSE
     │   └── fs.route.ts             ⬜ T-006/007/008
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
-        ├── index.html              ⬜ T-009
+        ├── index.html              ✅        T-001 골격, T-009에서 확장
         ├── main.tsx                ⬜ T-009  React 루트 마운트
         ├── app.tsx                 ⬜ T-011  라우팅 + 셸
         ├── styles.css              ⬜ T-009  CSS 토큰 · 라이트/다크

@@ -331,3 +331,173 @@ pre {
     border-bottom: 1px solid var(--border);
   }
 }
+
+/* --- 파일 탐색기 (pages/files.page.tsx, components/file-tree.tsx) --- */
+
+.files {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.files__side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.files__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.files__root {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.files__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.files__view {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 12px;
+}
+
+.tree__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree__row:hover {
+  background: var(--bg-raised);
+}
+
+.tree__row--focus {
+  box-shadow: inset 2px 0 0 var(--border-strong);
+}
+
+.tree__row--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tree__twisty {
+  width: 12px;
+  color: var(--text-faint);
+  font-size: 0.8em;
+}
+
+.tree__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.tree__hint {
+  padding: 3px 8px;
+  color: var(--text-faint);
+}
+
+.tree__error {
+  padding: 3px 8px;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+/* --- 읽기 전용 뷰어 --- */
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.viewer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+}
+
+.viewer__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.viewer__meta {
+  white-space: nowrap;
+  color: var(--text-faint);
+}
+
+.viewer__body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+@media (max-width: 900px) {
+  .files {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(160px, 34vh) 1fr;
+  }
+
+  .files__side {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

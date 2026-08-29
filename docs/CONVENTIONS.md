@@ -100,6 +100,8 @@ route  →  service  →  repository  →  disk
 ## 10. 프론트엔드
 
 - 함수 컴포넌트 + 훅만. 클래스 컴포넌트 없음.
+- 목록 행처럼 클릭 가능한 요소는 `<button type="button">`으로 만든다. `div + onClick` 금지 — 포커스와 Enter 가 공짜로 따라온다.
+- 트리·목록은 필요한 시점에만 읽는다(지연 로딩). 결과는 컴포넌트 지역 `Map` 캐시에 담고 불변 갱신한다.
 - 상태는 지역 상태 우선. 전역 상태 라이브러리를 추가하지 않는다. 공유가 필요하면 `useSyncExternalStore` 기반 작은 스토어를 `src/web/lib`에 둔다.
 - 라우팅은 `lib/router.ts`의 자체 라우터(History API + `useSyncExternalStore`). 라우팅 라이브러리를 추가하지 않는다.
 - 외부 스토어의 스냅샷은 **문자열 같은 원시값**을 반환한다. 매 호출마다 새 객체를 만들면 참조 비교가 항상 실패해 무한 렌더가 된다. 객체 변환은 훅 안의 `useMemo`가 한다.

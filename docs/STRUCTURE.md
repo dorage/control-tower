@@ -66,7 +66,7 @@ control-tower/
         │   └── use-live.ts         ⬜ T-018  SSE 구독
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
-        │   ├── file-tree.tsx       ⬜ T-012
+        │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
         │   ├── markdown-editor.tsx ⬜ T-013
         │   ├── markdown-preview.tsx ⬜ T-014
         │   ├── session-list.tsx    ⬜ T-015
@@ -74,7 +74,7 @@ control-tower/
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ✅        자리표시 (내용은 T-017)
-            ├── files.page.tsx          ⬜ T-012/013
+            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어 (에디터는 T-013)
             ├── sessions.page.tsx       ⬜ T-015
             └── session-detail.page.tsx ⬜ T-016
 ```

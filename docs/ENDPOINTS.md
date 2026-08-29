@@ -39,7 +39,7 @@
 
 ## 세션
 
-### `GET /api/stats` ⬜ T-003
+### `GET /api/stats` ✅
 
 전체 집계. 응답은 `Stats` (`src/domain/types.ts`).
 
@@ -56,26 +56,31 @@
 | `activityLast24h` | number | 24시간 내 활동한 세션 수 |
 | `updatedAt` | ISO string | 응답 생성 시각 |
 
-### `GET /api/projects` ⬜ T-003
+### `GET /api/projects` ✅
+
+| 파라미터 | 기본 | 설명 |
+| --- | --- | --- |
+| `limit` | 200 | 1..1000 |
+| `offset` | 0 | ≥0 |
 
 `{ total, offset, limit, items: ProjectSummary[] }`. `lastActivityAt` 내림차순.
 
-### `GET /api/sessions` ⬜ T-003
+### `GET /api/sessions` ✅
 
 | 파라미터 | 기본 | 설명 |
 | --- | --- | --- |
 | `projectId` | – | 프로젝트로 필터 |
-| `q` | – | id/title/firstPrompt/projectPath 부분 일치 |
+| `q` | – | 부분 일치(대소문자 무시). 대상은 `id` · `title` · `firstPrompt` · `projectPath` · `projectId` |
 | `limit` | 50 | 1..500 |
 | `offset` | 0 | ≥0 |
 
 `{ total, offset, limit, items: SessionSummary[] }`. `lastActivityAt` 내림차순.
 
-### `GET /api/sessions/:id` ⬜ T-003
+### `GET /api/sessions/:id` ✅
 
 `SessionSummary` 단건. 없으면 404.
 
-### `GET /api/sessions/:id/timeline` ⬜ T-003
+### `GET /api/sessions/:id/timeline` ✅
 
 | 파라미터 | 기본 | 설명 |
 | --- | --- | --- |
@@ -85,8 +90,24 @@
 | `sidechain` | 1 | 0이면 서브에이전트 레코드 제외 |
 
 `Timeline` (`{ sessionId, total, offset, limit, entries: TimelineEntry[] }`). 없으면 404.
+이미 봉투 형태라 목록 봉투로 다시 감싸지 않는다.
 
-### `GET /api/history` ⬜ T-003
+`total`은 필터 적용 후의 엔트리 수다. `events`/`sidechain`을 바꾸면 페이지 경계도 바뀐다.
+
+`TimelineEntry.blocks`는 5종의 유니온이다(`src/domain/types.ts`의 `TimelineBlock`).
+
+| `type` | 필드 |
+| --- | --- |
+| `text` | `text`, `truncated` |
+| `thinking` | `text`, `truncated` |
+| `tool_use` | `id`, `name`, `input`(JSON 문자열), `truncated` |
+| `tool_result` | `toolUseId`, `text`, `isError`, `truncated` |
+| `image` | `text`, `truncated` |
+
+`truncated: true`는 서버가 `MAX_BLOCK_CHARS`(기본 4000자)에서 잘랐다는 뜻이다. `tool_use.input`이
+잘렸으면 JSON 이 깨져 있으므로 클라이언트는 파싱 실패를 정상 경로로 다뤄야 한다.
+
+### `GET /api/history` ✅
 
 | 파라미터 | 기본 | 설명 |
 | --- | --- | --- |
@@ -259,8 +280,15 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 | --- | --- | --- |
 | `/` | 대시보드 | ⬜ T-017 (자리표시) |
 | `/files?root=<루트 id>&path=<상대경로>` | 파일 탐색기 + 뷰어 | ✅ |
-| `/sessions` | 세션 목록 | ⬜ T-015 (자리표시) |
-| `/sessions/:id` | 세션 타임라인 | ⬜ T-016 (자리표시) |
+| `/sessions?q=<검색어>&projectId=<프로젝트 id>` | 세션 목록 | ✅ |
+| `/sessions/:id?events=&sidechain=&thinking=&tools=&from=#entry-<n>` | 세션 타임라인 | ✅ |
 | 그 외 | 앱 내부 404 화면 | ✅ |
 
 `/files`의 선택 상태(`root`, `path`)는 쿼리에 담긴다. 그 URL을 그대로 공유하면 같은 파일이 열린다.
+
+`/sessions`의 필터(`q`, `projectId`)도 마찬가지다. 검색어는 300ms 디바운스 후 `replace`로 반영하므로
+뒤로가기가 글자 단위로 되돌아가지 않는다.
+
+`/sessions/:id`의 토글은 모두 `1`/`0`이며 기본값은 `events=0`, `sidechain=1`, `thinking=1`, `tools=1`이다.
+`events`·`sidechain`은 서버 필터라 토글하면 `from`이 사라진다(첫 페이지로 되돌아간다). `from`은 타임라인
+오프셋이고, 해시 `#entry-<n>`은 원본 JSONL 줄 번호로 특정 엔트리에 앵커한다.

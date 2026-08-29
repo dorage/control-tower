@@ -8,19 +8,20 @@ import { navigate } from "../lib/router";
  */
 export function MarkdownPreview({
   text,
-  root,
-  basePath,
+  root = null,
+  basePath = "",
 }: {
   text: string;
-  root: string;
+  /** 파일 뷰어 밖(세션 타임라인 등)에서는 없다. 없으면 상대 링크를 비활성으로 남긴다. */
+  root?: string | null;
   /** 상대 링크 해석 기준. 파일이 든 디렉터리. */
-  basePath: string;
+  basePath?: string;
 }) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   return <div className="md">{blocks.map((block, index) => renderBlock(block, index, root, basePath))}</div>;
 }
 
-function renderBlock(block: MdBlock, key: number, root: string, basePath: string): ReactNode {
+function renderBlock(block: MdBlock, key: number, root: string | null, basePath: string): ReactNode {
   switch (block.type) {
     case "heading": {
       const Tag = `h${block.level}` as "h1";
@@ -90,7 +91,7 @@ function renderBlock(block: MdBlock, key: number, root: string, basePath: string
   }
 }
 
-function renderInlines(nodes: MdInline[], root: string, basePath: string): ReactNode {
+function renderInlines(nodes: MdInline[], root: string | null, basePath: string): ReactNode {
   return nodes.map((node, index) => (
     <Fragment key={index}>{renderInline(node, root, basePath)}</Fragment>
   ));
@@ -111,7 +112,7 @@ function resolveRelative(basePath: string, href: string): string | null {
   return segments.join("/");
 }
 
-function renderInline(node: MdInline, root: string, basePath: string): ReactNode {
+function renderInline(node: MdInline, root: string | null, basePath: string): ReactNode {
   switch (node.type) {
     case "text":
       return node.value;
@@ -142,10 +143,11 @@ function renderInline(node: MdInline, root: string, basePath: string): ReactNode
       }
 
       // 같은 워크스페이스의 다른 마크다운 문서는 앱 안에서 연다.
+      // 루트가 없으면(세션 타임라인) 상대경로를 해석할 기준이 없으므로 비활성으로 남긴다.
+      const inert = <span className="md__link--inert">{children}</span>;
+      if (root === null) return inert;
       const target = resolveRelative(basePath, node.href);
-      if (target === null || !/\.(md|markdown)$/i.test(target)) {
-        return <span className="md__link--inert">{children}</span>;
-      }
+      if (target === null || !/\.(md|markdown)$/i.test(target)) return inert;
       const query = new URLSearchParams({ root, path: target });
       const to = `/files?${query.toString()}`;
       return (

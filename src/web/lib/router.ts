@@ -53,13 +53,27 @@ export function navigate(to: string, options: { replace?: boolean } = {}): void 
   notify();
 }
 
-/** 현재 쿼리 파라미터 하나만 바꾼다. 나머지는 유지한다. value 가 null 이면 제거. */
-export function setParam(name: string, value: string | null, options: { replace?: boolean } = {}): void {
+/**
+ * 여러 쿼리 파라미터를 한 번에 바꾼다. 나머지는 유지하고, 값이 null 이면 제거한다.
+ * 한 번에 바꿔야 하는 이유: 필터를 켜면서 페이지 오프셋을 0으로 되돌리는 것 같은 조합은
+ * 두 번에 나눠 갱신하면 중간 상태로 한 번 더 요청이 나간다.
+ */
+export function setParams(
+  updates: Record<string, string | null>,
+  options: { replace?: boolean } = {},
+): void {
   const search = new URLSearchParams(window.location.search);
-  if (value === null) search.delete(name);
-  else search.set(name, value);
+  for (const [name, value] of Object.entries(updates)) {
+    if (value === null) search.delete(name);
+    else search.set(name, value);
+  }
   const encoded = search.toString();
   navigate(window.location.pathname + (encoded ? `?${encoded}` : ""), options);
+}
+
+/** 현재 쿼리 파라미터 하나만 바꾼다. 나머지는 유지한다. value 가 null 이면 제거. */
+export function setParam(name: string, value: string | null, options: { replace?: boolean } = {}): void {
+  setParams({ [name]: value }, options);
 }
 
 export function Link({

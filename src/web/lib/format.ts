@@ -87,3 +87,26 @@ export function dateTime(value: string | number | null | undefined): string {
     `${pad(at.getHours())}:${pad(at.getMinutes())}`
   );
 }
+
+/**
+ * "/home/u/workspace/app" -> "~/workspace/app".
+ * 브라우저는 HOME 을 모르므로 경로 모양으로 추정한다. 표시 전용이며 서버로 되돌려 보내지 않는다.
+ */
+export function tildePath(value: string | null | undefined): string {
+  if (!value) return MISSING;
+  return value.replace(/^\/(?:home|Users)\/[^/]+|^\/root(?=\/|$)/, "~");
+}
+
+/** 목록 구분선용 묶음 이름. "오늘" | "어제" | "이번 주" | "2026년 8월" */
+export function dayGroup(value: string | number | null | undefined): string {
+  const millis = toMillis(value);
+  if (millis === null) return "시각 없음";
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = 86_400_000;
+  if (millis >= today) return "오늘";
+  if (millis >= today - day) return "어제";
+  if (millis >= today - 7 * day) return "이번 주";
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(millis);
+}

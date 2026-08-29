@@ -43,10 +43,10 @@ control-tower/
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
     │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
     │   ├── health.route.ts         ✅        /api/health
-    │   ├── session.route.ts        ⬜ T-003
-    │   ├── project.route.ts        ⬜ T-003
-    │   ├── stats.route.ts          ⬜ T-003
-    │   ├── history.route.ts        ⬜ T-003
+    │   ├── session.route.ts        ✅        /api/sessions · /:id · /:id/timeline
+    │   ├── project.route.ts        ✅        /api/projects
+    │   ├── stats.route.ts          ✅        /api/stats
+    │   ├── history.route.ts        ✅        /api/history
     │   ├── events.route.ts         ⬜ T-004  SSE
     │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
@@ -56,9 +56,9 @@ control-tower/
         ├── app.tsx                 ✅        라우트 → 화면 매핑 + document.title
         ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
         ├── lib/
-        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs 엔드포인트 (세션은 T-003에서 추가)
-        │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터
-        │   ├── format.ts           ✅        숫자/시간/바이트 포맷
+        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·히스토리
+        │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터 · setParam(s)
+        │   ├── format.ts           ✅        숫자/시간/바이트 포맷 · tildePath · dayGroup
         │   ├── format.test.ts       ✅
         │   ├── markdown.ts         ✅        마크다운 → AST
         │   └── markdown.test.ts     ✅
@@ -69,15 +69,17 @@ control-tower/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
         │   ├── markdown-editor.tsx ⬜ T-013
-        │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트
-        │   ├── session-list.tsx    ⬜ T-015
-        │   ├── timeline.tsx        ⬜ T-016
+        │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. root 없이도 쓸 수 있다
+        │   ├── session-list.tsx    ✅        세션 카드(compact 지원)·날짜 구분선·복사 버튼
+        │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
+        │   ├── timeline.test.ts    ✅        toolSummary (잘린 JSON 방어)
+        │   ├── stat-tile.tsx       ⬜ T-017
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ✅        자리표시 (내용은 T-017)
             ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(원문·미리보기 전환). 편집은 T-013
-            ├── sessions.page.tsx       ⬜ T-015
-            └── session-detail.page.tsx ⬜ T-016
+            ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
+            └── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
 ```
 
 ## 계층 규칙

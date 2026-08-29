@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { bytes, compactNumber, dateTime, duration, relativeTime } from "./format";
+import { bytes, compactNumber, dateTime, dayGroup, duration, relativeTime, tildePath } from "./format";
 
 const MISSING = "-";
 
@@ -42,4 +42,24 @@ test("잘못된 입력은 던지지 않고 - 를 반환한다", () => {
   expect(bytes(Number.NaN)).toBe(MISSING);
   expect(duration(Number.NaN)).toBe(MISSING);
   expect(compactNumber(Number.NaN)).toBe(MISSING);
+  expect(tildePath(null)).toBe(MISSING);
+});
+
+test("tildePath는 홈 디렉터리만 줄인다", () => {
+  expect(tildePath("/home/dorage/workspace/app")).toBe("~/workspace/app");
+  expect(tildePath("/Users/dorage/work")).toBe("~/work");
+  expect(tildePath("/root/app")).toBe("~/app");
+  // 홈이 아닌 경로는 건드리지 않는다. "/rootfs" 가 "~fs" 가 되면 안 된다.
+  expect(tildePath("/rootfs/app")).toBe("/rootfs/app");
+  expect(tildePath("/srv/app")).toBe("/srv/app");
+});
+
+test("dayGroup", () => {
+  const now = Date.now();
+  expect(dayGroup(now)).toBe("오늘");
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  expect(dayGroup(startOfToday - 1)).toBe("어제");
+  expect(dayGroup(startOfToday - 3 * 86_400_000)).toBe("이번 주");
+  expect(dayGroup(startOfToday - 400 * 86_400_000)).not.toBe("이번 주");
+  expect(dayGroup(null)).toBe("시각 없음");
 });

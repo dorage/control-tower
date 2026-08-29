@@ -87,6 +87,9 @@ route  →  service  →  repository  →  disk
 - 쿼리 파라미터는 camelCase (`projectId`, `sessionId`).
 - 응답 헬퍼는 `src/lib/http.ts`로 통일한다: `json` / `notFound`(404) / `badRequest`(400) / `forbidden`(403) / `conflict`(409) / `tooLarge`(413) / `serverError`(500) / `page`(목록 봉투).
 - 쿼리 파싱도 같은 파일로 통일한다: `intParam` / `intRange`(clamp) / `boolParam` / `stringParam`(빈 문자열은 null).
+- 목록은 `page()` 봉투로, 단건은 `json()`으로 응답한다. **이미 봉투 형태인 도메인 객체(`Timeline`)는 그대로 반환한다** — 봉투를 두 번 씌우지 않는다.
+- 서비스가 도메인에 맞는 필드명(`listSessions`의 `sessions`)을 쓰더라도 HTTP 봉투의 필드는 언제나 `items`다. 변환은 라우트에서 한다.
+- 경로 파라미터를 쓰는 핸들러는 `Bun.BunRequest<"/api/…/:id">`로 타입을 받는다. `req.params`는 이미 URL 디코딩된 값이다.
 - `LOG_REQUESTS=1`일 때만 `withRoute`가 요청 한 줄 로그를 남긴다. 기본은 끔.
 - 자세한 규약은 [ENDPOINTS.md](./ENDPOINTS.md).
 
@@ -107,12 +110,19 @@ route  →  service  →  repository  →  disk
 - 상태는 지역 상태 우선. 전역 상태 라이브러리를 추가하지 않는다. 공유가 필요하면 `useSyncExternalStore` 기반 작은 스토어를 `src/web/lib`에 둔다.
 - 라우팅은 `lib/router.ts`의 자체 라우터(History API + `useSyncExternalStore`). 라우팅 라이브러리를 추가하지 않는다.
 - 외부 스토어의 스냅샷은 **문자열 같은 원시값**을 반환한다. 매 호출마다 새 객체를 만들면 참조 비교가 항상 실패해 무한 렌더가 된다. 객체 변환은 훅 안의 `useMemo`가 한다.
-- 공유·복원할 가치가 있는 화면 상태(선택된 파일, 검색어)는 URL에 담는다. 개인 취향에 가까운 상태(펼침 집합, 숨김 토글)는 컴포넌트 지역 상태로 둔다.
+- 공유·복원할 가치가 있는 화면 상태(선택된 파일, 검색어, 필터, 페이지 오프셋)는 URL에 담는다. 개인 취향에 가까운 상태(펼침 집합, 숨김 토글, 보기 방식)는 컴포넌트 지역 상태나 `localStorage`에 둔다.
+- **검색 입력은 300ms 디바운스 후 `replace`로 URL에 반영한다.** 타이핑마다 `push`하면 뒤로가기가 글자 단위로 되돌아간다.
+- 여러 파라미터를 함께 바꿔야 하면(필터를 켜면서 오프셋을 0으로 되돌리는 등) `setParam`을 두 번 부르지 않고 `setParams`로 한 번에 바꾼다. 나눠 갱신하면 중간 상태로 요청이 한 번 더 나간다.
+- **페이지네이션은 "더 보기" 버튼이다.** 무한 스크롤을 쓰지 않는다 — 스크롤 위치 복원 문제가 없고 구현이 단순하다. 필터가 바뀌면 오프셋을 0으로 되돌리고 누적분을 버린다. 이어 붙일 때 id로 한 번 거른다(재시도가 같은 페이지를 두 번 붙이지 않도록).
+- **접힌 콘텐츠는 펼치기 전에는 렌더하지 않는다.** `<details>`의 `open` 상태로 조건부 렌더하고, 자식을 함수(`children: () => ReactNode`)로 받아 엘리먼트 생성 자체를 미룬다. 타임라인 200개 엔트리에 붙은 툴 입출력을 모두 그리면 DOM 노드가 수천 개가 된다.
+- **긴 목록은 서버 페이지네이션 + `React.memo`로 버틴다. 가상 스크롤을 도입하지 않는다.** 부족하면 페이지 크기를 줄인다. `memo`가 실제로 듣도록 props로 넘기는 객체(필터 등)는 `useMemo`로 참조를 고정한다.
 - 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
 - 브라우저는 서버 타입을 재정의하지 않는다. `src/domain/types.ts`에서 `import type`으로 가져온다.
 - 쿼리 문자열은 `URLSearchParams`로만 조립한다. 문자열 템플릿으로 붙이지 않는다.
 - HTTP 에러는 `ApiError(status, message, detail)`로 던진다. 상태 코드와 서버가 준 추가 필드(`currentVersion` 등)를 잃지 않기 위해서다.
 - 포맷터는 잘못된 입력에 대해 던지지 않고 `"-"`를 반환한다. 세션 데이터에는 타임스탬프가 없는 레코드가 흔하다.
+- 트랜스크립트에서 온 JSON 문자열(툴 입력 등)은 서버가 `MAX_BLOCK_CHARS`에서 잘랐을 수 있다. **`JSON.parse` 실패는 정상 경로다** — 요약을 포기하고 넘어가되 화면을 죽이지 않는다.
+- 카드처럼 통째로 링크인 요소 안의 보조 동작(복사, 필터)은 `<button>`으로 두고 핸들러에서 `preventDefault()`와 `stopPropagation()`을 **둘 다** 부른다. 하나만으로는 링크가 함께 발동한다.
 - CSS는 `src/web/styles.css` 한 파일 + CSS 커스텀 프로퍼티 토큰. CSS-in-JS나 Tailwind를 도입하지 않는다.
 - 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다. hex 리터럴은 `:root`와 `@media (prefers-color-scheme: dark)` 블록 안에만 존재한다.
 - 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.

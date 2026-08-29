@@ -253,4 +253,14 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 | `/` | ✅ | `src/web/index.html` (번들된 SPA) |
 | `/*` | ✅ | SPA 폴백. `/api/*`보다 낮은 우선순위 |
 
-클라이언트 라우트(T-011): `/`(대시보드) · `/files` · `/sessions` · `/sessions/:id`
+클라이언트 라우트 ✅
+
+| 경로 | 화면 | 상태 |
+| --- | --- | --- |
+| `/` | 대시보드 | ⬜ T-017 (자리표시) |
+| `/files?root=<루트 id>&path=<상대경로>` | 파일 탐색기 + 뷰어 | ✅ |
+| `/sessions` | 세션 목록 | ⬜ T-015 (자리표시) |
+| `/sessions/:id` | 세션 타임라인 | ⬜ T-016 (자리표시) |
+| 그 외 | 앱 내부 404 화면 | ✅ |
+
+`/files`의 선택 상태(`root`, `path`)는 쿼리에 담긴다. 그 URL을 그대로 공유하면 같은 파일이 열린다.

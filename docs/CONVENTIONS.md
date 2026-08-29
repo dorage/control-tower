@@ -101,6 +101,9 @@ route  →  service  →  repository  →  disk
 
 - 함수 컴포넌트 + 훅만. 클래스 컴포넌트 없음.
 - 상태는 지역 상태 우선. 전역 상태 라이브러리를 추가하지 않는다. 공유가 필요하면 `useSyncExternalStore` 기반 작은 스토어를 `src/web/lib`에 둔다.
+- 라우팅은 `lib/router.ts`의 자체 라우터(History API + `useSyncExternalStore`). 라우팅 라이브러리를 추가하지 않는다.
+- 외부 스토어의 스냅샷은 **문자열 같은 원시값**을 반환한다. 매 호출마다 새 객체를 만들면 참조 비교가 항상 실패해 무한 렌더가 된다. 객체 변환은 훅 안의 `useMemo`가 한다.
+- 공유·복원할 가치가 있는 화면 상태(선택된 파일, 검색어)는 URL에 담는다. 개인 취향에 가까운 상태(펼침 집합, 숨김 토글)는 컴포넌트 지역 상태로 둔다.
 - 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
 - 브라우저는 서버 타입을 재정의하지 않는다. `src/domain/types.ts`에서 `import type`으로 가져온다.
 - 쿼리 문자열은 `URLSearchParams`로만 조립한다. 문자열 템플릿으로 붙이지 않는다.

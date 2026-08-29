@@ -9,6 +9,8 @@ export const config = {
   watchIntervalMs: Number(Bun.env.WATCH_INTERVAL_MS ?? 1500),
   /** Max characters kept per timeline text block before truncation. */
   maxBlockChars: Number(Bun.env.MAX_BLOCK_CHARS ?? 4000),
+  /** One log line per request. Off by default - this is a local tool and it gets noisy. */
+  logRequests: Bun.env.LOG_REQUESTS === "1",
 } as const;
 
 export const paths = {

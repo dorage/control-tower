@@ -23,8 +23,8 @@ control-tower/
     ├── domain/
     │   └── types.ts                ✅        디스크 원본 타입 + 도메인 타입
     ├── lib/                                  도메인 지식 없는 순수 유틸
-    │   ├── http.ts                 ✅        json/notFound/badRequest/serverError/intParam
-    │   │                           ⬜ T-002  forbidden/conflict/withRoute 추가
+    │   ├── http.ts                 ✅        응답 헬퍼 · 쿼리 파싱 · HttpError · withRoute
+    │   ├── http.test.ts             ✅
     │   └── text.ts                 ✅        stripAnsi/truncate/parseJsonl/decodeProjectId
     ├── repositories/                         디스크 읽기·쓰기
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
@@ -87,7 +87,7 @@ routes  →  services  →  repositories  →  디스크
 - 역방향 import 금지.
 - `routes`는 `repositories`를 직접 부르지 않는다.
 - `web`은 서버 모듈을 값으로 import 하지 않는다. `domain/types`의 타입만 `import type`으로 공유한다.
-- `lib`은 아무것도 import 하지 않는다(런타임 전역 제외).
+- `lib`은 아무것도 import 하지 않는다(런타임 전역 제외). 예외: `http.ts` → `config.ts`(요청 로깅 스위치).
 
 ## 데이터 소스
 
@@ -109,6 +109,7 @@ routes  →  services  →  repositories  →  디스크
 | `CLAUDE_HOME` | `$HOME/.claude` | 관찰 대상 Claude 데이터 디렉터리 |
 | `WATCH_INTERVAL_MS` | `1500` | 변경 감지 폴링 주기 |
 | `MAX_BLOCK_CHARS` | `4000` | 타임라인 블록당 최대 문자 수 |
+| `LOG_REQUESTS` | `0` | `1`이면 요청당 한 줄 로그 |
 | `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분 (T-005) |
 | `FS_MAX_READ_BYTES` | `2097152` | 파일 읽기 상한 (T-005) |
 | `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 (T-005) |

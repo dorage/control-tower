@@ -50,7 +50,7 @@ route  →  service  →  repository  →  disk
 - 역방향 import 금지. repository가 service를 부르지 않는다.
 - route는 repository를 직접 부르지 않는다. 반드시 service를 경유한다.
 - `src/domain/types.ts`는 타입만 export 한다. 로직을 두지 않는다.
-- `src/lib/*`는 도메인 지식이 없는 순수 유틸만 둔다.
+- `src/lib/*`는 도메인 지식이 없는 순수 유틸만 둔다. 유일한 예외는 `http.ts`가 요청 로깅 스위치 하나 때문에 `config.ts`를 import 하는 것이다(`config.ts`는 잎 모듈이라 순환이 없다).
 - `src/web/*`는 서버 코드를 import 하지 않는다. 단, `src/domain/types.ts`의 **타입만** `import type`으로 공유한다.
 - 라우트 모듈은 **경로 → 메서드별 핸들러 레코드**를 named export 한다(`export const xRoutes = { "/api/x": { GET: ... } }`). 함수를 직접 주지 않는다 — 명시하지 않은 메서드에 대해 Bun이 405를 돌려주게 하기 위해서다.
 - 라우트 조합은 `src/routes/index.ts`에서**만** 한다. 새 라우트 모듈을 추가할 때 다른 파일을 건드리지 않는다.
@@ -69,7 +69,9 @@ route  →  service  →  repository  →  disk
 
 - **읽기는 방어적으로.** 디스크의 파일이 사라지거나 반쯤 쓰인 상태를 정상 경로로 취급한다. 손상된 JSONL 줄은 건너뛰고 전체를 실패시키지 않는다.
 - **쓰기는 엄격하게.** 경로·권한·충돌 검증에 실패하면 즉시 에러 응답을 반환한다.
-- 라우트에서 예외를 흘리지 않는다. `withRoute` 래퍼(T-002)가 잡아 500으로 변환한다.
+- 라우트에서 예외를 흘리지 않는다. 모든 핸들러는 `src/lib/http.ts`의 `withRoute`로 감싼다. 일반 예외는 500으로, `HttpError(status, message, extra?)`는 그 상태 코드와 `{ error, ...extra }` 본문으로 변환된다.
+- 정상 경로는 `json()`/`page()`를 **반환**하고, 예외 상황은 `throw new HttpError(...)`로 **던진다**. 두 방식을 한 핸들러 안에서 섞지 않는다.
+- 쿼리 파싱 실패(`limit=abc`)는 400이 아니라 기본값으로 처리한다 — 읽기는 방어적으로.
 - 사용자 입력 오류는 400, 없는 리소스는 404, 낙관적 잠금 충돌은 409, 허용되지 않은 경로/확장자는 403.
 - 서버 로그 접두사는 `[control-tower]`.
 
@@ -79,6 +81,9 @@ route  →  service  →  repository  →  disk
 - 캐시 금지 헤더(`cache-control: no-store`)를 기본으로 붙인다. `src/lib/http.ts`의 `json()`이 처리한다.
 - 목록 응답은 `{ total, offset, limit, items }` 형태의 봉투(envelope)를 쓴다.
 - 쿼리 파라미터는 camelCase (`projectId`, `sessionId`).
+- 응답 헬퍼는 `src/lib/http.ts`로 통일한다: `json` / `notFound`(404) / `badRequest`(400) / `forbidden`(403) / `conflict`(409) / `tooLarge`(413) / `serverError`(500) / `page`(목록 봉투).
+- 쿼리 파싱도 같은 파일로 통일한다: `intParam` / `intRange`(clamp) / `boolParam` / `stringParam`(빈 문자열은 null).
+- `LOG_REQUESTS=1`일 때만 `withRoute`가 요청 한 줄 로그를 남긴다. 기본은 끔.
 - 자세한 규약은 [ENDPOINTS.md](./ENDPOINTS.md).
 
 ## 9. 보안

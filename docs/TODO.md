@@ -67,3 +67,5 @@
 2026-08-29T08:06:48Z DONE T-006 "/api/fs/roots·list·tree"
 2026-08-29T08:07:47Z START T-007
 2026-08-29T08:07:47Z DONE T-007 "GET /api/fs/file, 바이너리 판정과 크기 상한"
+2026-08-29T08:09:22Z START T-009
+2026-08-29T08:09:22Z DONE T-009 "React 마운트, CSS 토큰, 공통 프리미티브"

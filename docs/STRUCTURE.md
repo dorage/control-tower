@@ -8,7 +8,7 @@
 control-tower/
 ├── index.ts                        ✅        서버 진입점 (Bun.serve 기동)
 ├── package.json                    ✅        scripts: dev / start / typecheck
-├── tsconfig.json                   ✅
+├── tsconfig.json                   ✅        lib: ESNext + DOM (브라우저 코드용)
 ├── CLAUDE.md                       ✅        Bun 사용 규약 (에이전트용)
 ├── README.md                       ✅
 ├── docs/
@@ -50,10 +50,11 @@ control-tower/
     │   ├── events.route.ts         ⬜ T-004  SSE
     │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
-        ├── index.html              ✅        T-001 골격, T-009에서 확장
-        ├── main.tsx                ⬜ T-009  React 루트 마운트
+        ├── index.html              ✅        스크립트·스타일 연결
+        ├── main.tsx                ✅        React 루트 마운트
+        ├── css.d.ts                ✅        CSS 부수효과 import 선언
         ├── app.tsx                 ⬜ T-011  라우팅 + 셸
-        ├── styles.css              ⬜ T-009  CSS 토큰 · 라이트/다크
+        ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
         ├── lib/
         │   ├── api.ts              ⬜ T-010  fetch 래퍼 + 엔드포인트 함수
         │   ├── router.ts           ⬜ T-011  history API 기반 미니 라우터
@@ -69,7 +70,7 @@ control-tower/
         │   ├── markdown-preview.tsx ⬜ T-014
         │   ├── session-list.tsx    ⬜ T-015
         │   ├── timeline.tsx        ⬜ T-016
-        │   └── ui.tsx              ⬜ T-009  공통 프리미티브(Spinner/Empty/ErrorBox/Badge)
+        │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ⬜ T-017
             ├── files.page.tsx          ⬜ T-012/013

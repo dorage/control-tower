@@ -103,7 +103,10 @@ route  →  service  →  repository  →  disk
 - 상태는 지역 상태 우선. 전역 상태 라이브러리를 추가하지 않는다. 공유가 필요하면 `useSyncExternalStore` 기반 작은 스토어를 `src/web/lib`에 둔다.
 - 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다.
 - CSS는 `src/web/styles.css` 한 파일 + CSS 커스텀 프로퍼티 토큰. CSS-in-JS나 Tailwind를 도입하지 않는다.
-- 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다.
+- 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다. hex 리터럴은 `:root`와 `@media (prefers-color-scheme: dark)` 블록 안에만 존재한다.
+- 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.
+- 클래스 네이밍은 BEM 축약형 `블록__요소--변형` (예: `tree__row--active`, `editor__toolbar`).
+- 로딩/빈 상태/에러는 화면마다 새로 그리지 않고 `components/ui.tsx`의 `Spinner`/`EmptyState`/`ErrorBox`를 쓴다.
 - 사용자 입력에서 온 문자열을 `dangerouslySetInnerHTML`로 넣지 않는다. 마크다운 프리뷰는 자체 렌더러가 만든 React 엘리먼트로 출력한다(T-014).
 
 ## 11. 테스트

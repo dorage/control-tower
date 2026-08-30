@@ -99,6 +99,10 @@ route  →  service  →  repository  →  disk
 - `resolvePath` 절차(순서를 지킨다): ① `rootId` 없으면 400 → ② 미등록 루트면 403 → ③ `\0` 포함이면 400 → ④ 절대경로면 400 → ⑤ `resolve()`로 `..` 정규화 → ⑥ `candidate === root.path || candidate.startsWith(root.path + sep)` 포함 검사(구분자를 붙이지 않으면 `/home/u/work-secret`이 `/home/u/work`를 통과한다) → ⑦ `realpath` 결과로 ⑥을 한 번 더(없는 파일이면 부모 기준, 부모도 없으면 404).
 - 쿼리 파라미터는 `URLSearchParams`가 이미 퍼센트 디코딩한다. `decodeURIComponent`를 **중복 호출하지 않는다** — 이중 디코딩은 `%252e%252e` 우회를 만든다.
 - 쓰기는 확장자 허용목록(기본 `.md`, `.markdown`)에 한정한다. 판정은 `isEditable(name)` 하나로 한다.
+- **쓰기 검사 순서가 곧 보안이다:** 본문 크기 → `resolvePath` → 확장자 허용목록 → 파일 접근(`statEntry`) → 낙관적 잠금 → 실제 쓰기. 확장자 검사를 경로 해석보다 앞에 두거나 파일 접근보다 뒤로 미루지 않는다.
+- **쓰기는 원자적으로.** 같은 디렉터리의 임시 파일(`.<name>.tmp-<pid>-<n>`)에 쓴 뒤 `rename`으로 교체한다. `rename`은 같은 파일시스템 안에서만 원자적이므로 임시 파일을 시스템 tmp 에 만들지 않는다. 이름을 `.`으로 시작시켜 목록의 숨김 필터에 걸리게 하고, 실패 경로에서 임시 파일을 지운다.
+- **낙관적 잠금은 `version` 왕복으로만 한다.** 클라이언트가 읽은 `version`을 `baseVersion`으로 되돌려 보내고, 서버는 현재 `version`과 다르면 409 + `currentVersion`을 준다. 강제 덮어쓰기 플래그를 서버에 두지 않는다 — 덮어쓰기는 클라이언트가 다시 읽어 재저장하는 것으로 표현한다.
+- 쓰기 뒤 응답의 `version`은 반드시 다시 `stat`해서 만든다. `content.length`로 계산하면(UTF-8 바이트 수 ≠ 문자 수, mtime 은 파일시스템이 정함) 바로 다음 저장이 409로 실패한다.
 - 낙관적 잠금 키는 `versionOf(modifiedAt, size)`로만 만든다. 읽기와 쓰기가 같은 함수를 쓰지 않으면 `mtimeMs` 소수점 때문에 미묘하게 어긋난다.
 - 서버는 기본적으로 로컬 네트워크용이다. 인증은 범위 밖이며, 외부 노출 시 별도 작업으로 다룬다.
 
@@ -117,6 +121,12 @@ route  →  service  →  repository  →  disk
 - **접힌 콘텐츠는 펼치기 전에는 렌더하지 않는다.** `<details>`의 `open` 상태로 조건부 렌더하고, 자식을 함수(`children: () => ReactNode`)로 받아 엘리먼트 생성 자체를 미룬다. 타임라인 200개 엔트리에 붙은 툴 입출력을 모두 그리면 DOM 노드가 수천 개가 된다.
 - **긴 목록은 서버 페이지네이션 + `React.memo`로 버틴다. 가상 스크롤을 도입하지 않는다.** 부족하면 페이지 크기를 줄인다. `memo`가 실제로 듣도록 props로 넘기는 객체(필터 등)는 `useMemo`로 참조를 고정한다.
 - 데이터 페칭은 `src/web/hooks/use-query.ts` 한 곳으로 모은다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
+- **자동 저장하지 않는다. 저장은 언제나 명시적이다.** 낙관적 잠금 아래에서 자동 저장은 사용자가 인지하지 못하는 409를 만들고, 에이전트가 같은 파일을 실시간으로 고치는 환경에서 위험하다.
+- 대신 **초안을 보존한다.** `dirty`인 본문을 `ct:draft:<root>:<path>` 키로 `localStorage`에 500ms 디바운스로 남기고, 파일 전환·언마운트 시에는 디바운스를 기다리지 않고 즉시 flush 한다. 저장에 성공하거나 사용자가 "버리기"를 누르면 키를 지운다. `localStorage` 접근은 통째로 막힐 수 있으므로 읽기·쓰기 모두 try/catch 로 감싸고 실패해도 앱을 계속 돌린다.
+- **textarea 편집 보조는 `document.execCommand("insertText")`로 한다.** deprecated 지만 브라우저의 실행 취소 스택에 편집을 기록하는 유일한 방법이다. `value`를 직접 갈아끼우면 Cmd+Z 가 망가진다. 이 호출은 진짜 `input` 이벤트를 발생시키므로 제어 컴포넌트의 `onChange`가 정상적으로 따라온다.
+- 키 핸들러는 `event.nativeEvent.isComposing`이면 즉시 반환한다. 한글 조합 중에 Enter/Tab 을 가로채면 글자가 깨지고 커서가 튄다.
+- 편집 중인 본문(`draft`)은 어떤 자동 갱신도 덮어쓰지 않는다. 실시간 이벤트는 캐시만 무효화하고, 열려 있는 파일은 `dirty`가 false 일 때만 다시 읽는다.
+- `await` 뒤에 상태를 쓰는 비동기 동작(저장·재읽기)은 **대상이 아직 열려 있는지 ref 로 확인한 뒤** 쓴다. 늦게 온 응답이 그사이 열린 다른 파일의 상태를 덮어쓰지 않게 한다.
 - 브라우저는 서버 타입을 재정의하지 않는다. `src/domain/types.ts`에서 `import type`으로 가져온다.
 - 쿼리 문자열은 `URLSearchParams`로만 조립한다. 문자열 템플릿으로 붙이지 않는다.
 - HTTP 에러는 `ApiError(status, message, detail)`로 던진다. 상태 코드와 서버가 준 추가 필드(`currentVersion` 등)를 잃지 않기 위해서다.

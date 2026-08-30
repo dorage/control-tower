@@ -4,8 +4,8 @@
  * 파일 내용은 `Bun.file`을 쓰지만(CONVENTIONS §1), 디렉터리 순회와 stat 메타데이터는
  * `Bun.file`로 얻을 수 없어 `node:fs/promises`를 쓴다. 이 파일이 그 예외다.
  */
-import { readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, rename, stat, unlink } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 
 export interface RawEntry {
   name: string;
@@ -62,4 +62,26 @@ export async function readDirectory(absolute: string): Promise<RawEntry[]> {
 /** 바이너리 판정을 해야 하므로 텍스트가 아니라 바이트로 읽는다. */
 export async function readFileBytes(absolute: string): Promise<Uint8Array> {
   return new Uint8Array(await Bun.file(absolute).arrayBuffer());
+}
+
+/** 같은 프로세스의 동시 저장이 서로의 임시 파일을 밟지 않게 하는 단조 증가 카운터. */
+let tempCounter = 0;
+
+/**
+ * 같은 디렉터리의 임시 파일에 쓴 뒤 `rename` 으로 교체한다.
+ *
+ * `rename` 은 같은 파일시스템 안에서만 원자적이므로 임시 파일을 시스템 tmp 가 아니라
+ * 대상 디렉터리에 만든다. 이름을 `.` 으로 시작시켜 목록 API 의 숨김 필터에 걸리게 하고,
+ * `Date.now()` 대신 카운터를 쓴다 - 같은 밀리초에 두 번 호출될 수 있다.
+ */
+export async function writeFileAtomic(absolute: string, content: string): Promise<void> {
+  const temp = join(dirname(absolute), `.${basename(absolute)}.tmp-${process.pid}-${tempCounter++}`);
+  try {
+    await Bun.write(temp, content);
+    await rename(temp, absolute);
+  } catch (error) {
+    // 실패해도 임시 파일을 남기지 않는다.
+    await unlink(temp).catch(() => {});
+    throw error;
+  }
 }

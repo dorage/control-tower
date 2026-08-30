@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { FsEntry } from "../../domain/types";
 import { FileTree } from "../components/file-tree";
+import { MarkdownEditor } from "../components/markdown-editor";
 import { MarkdownPreview } from "../components/markdown-preview";
 import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { ApiError, api } from "../lib/api";
 import { bytes } from "../lib/format";
 import { navigate, useLocation } from "../lib/router";
+import { useEditorFile } from "../hooks/use-editor-file";
 import { useQuery } from "../hooks/use-query";
 
 export function FilesPage() {
@@ -18,6 +20,12 @@ export function FilesPage() {
 
   const roots = useQuery(() => api.fsRoots(), []);
 
+  /**
+   * 편집 중인지는 뷰어 안쪽 상태지만, 파일을 바꾸는 것은 바깥쪽 일이다.
+   * 상태를 끌어올리면 타이핑마다 페이지 전체가 다시 그려지므로 ref 로만 공유한다.
+   */
+  const dirtyRef = useRef(false);
+
   // 루트가 URL 에 없으면 첫 번째 루트로 채운다. 뒤로가기 기록을 남기지 않는다.
   useEffect(() => {
     if (root || !roots.data) return;
@@ -25,13 +33,20 @@ export function FilesPage() {
     if (first) navigate(`/files?root=${encodeURIComponent(first.id)}`, { replace: true });
   }, [root, roots.data]);
 
+  /** 저장하지 않은 편집이 있으면 이동 전에 확인한다. 취소하면 URL 을 바꾸지 않는다. */
+  const confirmLeave = useCallback(() => {
+    if (!dirtyRef.current) return true;
+    return window.confirm("저장하지 않은 변경이 있습니다. 이동할까요?");
+  }, []);
+
   const select = useCallback(
     (entry: FsEntry) => {
-      if (!root) return;
+      if (!root || entry.path === path) return;
+      if (!confirmLeave()) return;
       const query = new URLSearchParams({ root, path: entry.path });
       navigate(`/files?${query.toString()}`);
     },
-    [root],
+    [root, path, confirmLeave],
   );
 
   if (roots.error) return <ErrorBox error={roots.error} onRetry={roots.reload} />;
@@ -55,7 +70,10 @@ export function FilesPage() {
               className="files__root"
               value={root}
               aria-label="루트 선택"
-              onChange={(event) => navigate(`/files?root=${encodeURIComponent(event.target.value)}`)}
+              onChange={(event) => {
+                if (!confirmLeave()) return;
+                navigate(`/files?root=${encodeURIComponent(event.target.value)}`);
+              }}
             >
               {roots.data.items.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -82,21 +100,32 @@ export function FilesPage() {
       </div>
 
       <div className="files__view">
-        <FileView root={root} path={path} />
+        <FileView root={root} path={path} dirtyRef={dirtyRef} />
       </div>
     </div>
   );
 }
 
-type ViewMode = "source" | "preview";
+type ViewMode = "preview" | "source" | "edit";
+
+const MODES: { id: ViewMode; label: string }[] = [
+  { id: "preview", label: "미리보기" },
+  { id: "source", label: "원문" },
+  { id: "edit", label: "편집" },
+];
 
 const MODE_KEY = "ct:view-mode";
+
+function isViewMode(value: string | null): value is ViewMode {
+  return value === "preview" || value === "source" || value === "edit";
+}
 
 /** 보기 방식은 개인 취향이라 URL 이 아니라 localStorage 에 남긴다. */
 function useViewMode(): [ViewMode, (mode: ViewMode) => void] {
   const [mode, setMode] = useState<ViewMode>(() => {
     try {
-      return window.localStorage.getItem(MODE_KEY) === "source" ? "source" : "preview";
+      const stored = window.localStorage.getItem(MODE_KEY);
+      return isViewMode(stored) ? stored : "preview";
     } catch {
       // 사생활 보호 모드 등에서 접근이 막힐 수 있다. 기본값으로 계속 동작한다.
       return "preview";
@@ -113,63 +142,87 @@ function useViewMode(): [ViewMode, (mode: ViewMode) => void] {
   return [mode, update];
 }
 
-function FileView({ root, path }: { root: string; path: string | null }) {
-  const file = useQuery(() => (path ? api.fsFile(root, path) : Promise.resolve(null)), [root, path]);
+function FileView({
+  root,
+  path,
+  dirtyRef,
+}: {
+  root: string;
+  path: string | null;
+  dirtyRef: RefObject<boolean>;
+}) {
+  const editor = useEditorFile(root, path);
   const [mode, setMode] = useViewMode();
+  const { file, dirty } = editor;
+
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty, dirtyRef]);
 
   if (!path) return <EmptyState title="파일을 선택하세요" hint="왼쪽 트리에서 파일을 고르면 내용이 보입니다." />;
-  if (file.error) {
-    const status = file.error instanceof ApiError ? file.error.status : 0;
+  if (editor.loadError) {
+    const status = editor.loadError instanceof ApiError ? editor.loadError.status : 0;
     if (status === 413) {
       return <EmptyState title="파일이 너무 큽니다" hint="FS_MAX_READ_BYTES 상한을 넘었습니다." />;
     }
-    return <ErrorBox error={file.error} onRetry={file.reload} />;
+    return <ErrorBox error={editor.loadError} onRetry={() => void editor.reload()} />;
   }
-  if (!file.data) return <Spinner />;
+  if (!file) return <Spinner />;
 
-  const { data } = file;
-  if (data.encoding === "binary") {
+  if (file.encoding === "binary") {
     return (
-      <EmptyState title="미리보기를 지원하지 않는 파일입니다" hint={`${data.name} · ${bytes(data.size)}`} />
+      <EmptyState title="미리보기를 지원하지 않는 파일입니다" hint={`${file.name} · ${bytes(file.size)}`} />
     );
   }
 
-  const isMarkdown = data.language === "markdown";
-  const rendered = isMarkdown && mode === "preview";
-  const directory = data.path.includes("/") ? data.path.slice(0, data.path.lastIndexOf("/")) : "";
+  // 미리보기는 마크다운에만, 편집은 쓰기 허용 확장자에만. 원문은 언제나 있다.
+  const available = MODES.filter(
+    (candidate) =>
+      candidate.id === "source" ||
+      (candidate.id === "preview" && file.language === "markdown") ||
+      (candidate.id === "edit" && file.editable),
+  );
+  const active: ViewMode = available.some((candidate) => candidate.id === mode) ? mode : "source";
+  const directory = file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/")) : "";
 
   return (
     <div className="viewer">
       <div className="viewer__bar">
-        <span className="viewer__path">{data.path}</span>
+        <span className="viewer__path">
+          {file.path}
+          {dirty ? <span className="viewer__dot" title="저장하지 않은 변경" /> : null}
+        </span>
         <span className="viewer__meta">
-          {isMarkdown ? (
+          {available.length > 1 ? (
             <span className="viewer__modes" role="group" aria-label="보기 방식">
-              <Button
-                variant={rendered ? undefined : "primary"}
-                aria-pressed={!rendered}
-                onClick={() => setMode("source")}
-              >
-                원문
-              </Button>
-              <Button
-                variant={rendered ? "primary" : undefined}
-                aria-pressed={rendered}
-                onClick={() => setMode("preview")}
-              >
-                미리보기
-              </Button>
+              {available.map((candidate) => (
+                <Button
+                  key={candidate.id}
+                  variant={active === candidate.id ? "primary" : undefined}
+                  aria-pressed={active === candidate.id}
+                  onClick={() => setMode(candidate.id)}
+                >
+                  {candidate.label}
+                </Button>
+              ))}
             </span>
           ) : null}
-          {data.language} · {bytes(data.size)}
+          {file.language} · {bytes(file.size)}
         </span>
       </div>
-      {rendered ? (
+
+      {/*
+        세 탭 모두 서버 응답이 아니라 draft 를 원본으로 삼는다. 그래서 편집 중인 내용을
+        저장하기 전에 미리보기로 확인할 수 있다. 편집하지 않았다면 draft 는 디스크 내용과 같다.
+      */}
+      {active === "edit" ? (
+        <MarkdownEditor editor={editor} />
+      ) : active === "preview" ? (
         <div className="viewer__body viewer__body--rendered">
-          <MarkdownPreview text={data.content ?? ""} root={root} basePath={directory} />
+          <MarkdownPreview text={editor.draft} root={root} basePath={directory} />
         </div>
       ) : (
-        <pre className="viewer__body">{data.content}</pre>
+        <pre className="viewer__body">{editor.draft}</pre>
       )}
     </div>
   );

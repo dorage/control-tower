@@ -225,7 +225,7 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 - 디코딩은 `TextDecoder("utf-8", { fatal: false })`. 깨진 바이트는 U+FFFD 가 되고 500 이 나지 않는다.
 - `version`은 `"<modifiedAt>:<size>"`. 저장 시 낙관적 잠금 키로 쓴다. `/api/fs/list`의 `modifiedAt`/`size`와 같은 값이다.
 
-### `PUT /api/fs/file` ⬜ T-008
+### `PUT /api/fs/file` ✅
 
 마크다운 저장. 요청 본문 JSON:
 
@@ -257,13 +257,17 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 
 | 코드 | 상황 |
 | --- | --- |
-| 400 | 필드 누락/형식 오류 |
+| 400 | JSON 파싱 실패, 필드 누락/형식 오류, **기존 파일을 덮어쓰는데 `baseVersion`이 없음** |
 | 403 | 루트 밖 경로 또는 쓰기 비허용 확장자 |
 | 404 | 파일이 없고 `createIfMissing`이 아님 |
 | 409 | `baseVersion`이 현재 `version`과 불일치. 본문에 `{ "error": "...", "currentVersion": "..." }` |
 | 413 | 본문이 `FS_MAX_READ_BYTES` 초과 |
 
-- 쓰기는 같은 디렉터리의 임시 파일에 쓴 뒤 `rename`으로 원자 교체한다.
+- `content: ""`는 유효하다(파일을 비우는 정당한 편집). `content`가 문자열이 아니면 400이다.
+- 검사 순서가 곧 보안이다: 크기 → `resolvePath` → 확장자 허용목록 → 파일 접근 → 낙관적 잠금 → 쓰기.
+- 쓰기는 같은 디렉터리의 임시 파일(`.<name>.tmp-<pid>-<n>`)에 쓴 뒤 `rename`으로 원자 교체한다. 실패해도 임시 파일을 남기지 않는다.
+- 응답의 `version`은 쓰기 뒤 다시 `stat`한 결과로 만든다. 그래서 방금 받은 `version`으로 곧바로 다시 저장해도 409가 나지 않는다.
+- **서버에 강제 덮어쓰기 플래그는 없다.** 409를 해소하는 방법은 하나뿐이다 — 클라이언트가 `GET /api/fs/file`로 최신 `version`을 다시 받아 그것을 `baseVersion`으로 삼아 재저장한다. `src/web/hooks/use-editor-file.ts`의 `overwrite()`가 그 흐름이다.
 
 ---
 

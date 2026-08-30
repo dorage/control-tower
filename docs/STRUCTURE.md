@@ -30,7 +30,7 @@ control-tower/
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
     │   ├── transcript.repository.ts   ✅     ~/.claude/projects/<project>/<id>.jsonl (LRU 캐시)
-    │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes
+    │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
     │   ├── live.service.ts         ✅
@@ -38,8 +38,8 @@ control-tower/
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
     │   ├── stats.service.ts        ✅
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독
-    │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree · isEditable/languageOf/versionOf
-    │   └── fs.service.test.ts       ✅        경로 탈출 방어 테스트
+    │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
+    │   └── fs.service.test.ts       ✅        경로 탈출 방어 · 저장 충돌·원자성 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
     │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
     │   ├── health.route.ts         ✅        /api/health
@@ -48,7 +48,7 @@ control-tower/
     │   ├── stats.route.ts          ✅        /api/stats
     │   ├── history.route.ts        ✅        /api/history
     │   ├── events.route.ts         ⬜ T-004  SSE
-    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file
+    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        스크립트·스타일 연결
         ├── main.tsx                ✅        React 루트 마운트
@@ -61,14 +61,17 @@ control-tower/
         │   ├── format.ts           ✅        숫자/시간/바이트 포맷 · tildePath · dayGroup
         │   ├── format.test.ts       ✅
         │   ├── markdown.ts         ✅        마크다운 → AST
-        │   └── markdown.test.ts     ✅
+        │   ├── markdown.test.ts     ✅
+        │   ├── editing.ts          ✅        목록 이어쓰기 · 들여쓰기/내어쓰기 (순수 문자열 연산)
+        │   └── editing.test.ts      ✅
         ├── hooks/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
+        │   ├── use-editor-file.ts  ✅        파일 로드/더티/저장 상태 기계 · 초안 보존
         │   └── use-live.ts         ⬜ T-018  SSE 구독
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
-        │   ├── markdown-editor.tsx ⬜ T-013
+        │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너
         │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. root 없이도 쓸 수 있다
         │   ├── session-list.tsx    ✅        세션 카드(compact 지원)·날짜 구분선·복사 버튼
         │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
@@ -77,7 +80,7 @@ control-tower/
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ✅        자리표시 (내용은 T-017)
-            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(원문·미리보기 전환). 편집은 T-013
+            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(미리보기·원문·편집 3탭)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
             └── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
 ```

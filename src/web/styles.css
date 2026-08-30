@@ -1141,3 +1141,92 @@ pre {
   border-radius: var(--radius);
   color: var(--text-faint);
 }
+
+/* --- 마크다운 에디터 (components/markdown-editor.tsx) --- */
+
+.viewer__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  vertical-align: middle;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor__banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.editor__banner--danger {
+  background: var(--danger-soft);
+}
+
+.editor__banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 부모가 min-height: 0 이어야 flex 자식이 실제로 줄어든다. 이것이 없으면 긴 문서에서
+ * textarea 가 컨테이너 밖으로 자라고 상태 바가 화면 밑으로 밀려난다.
+ */
+.editor__input {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: inherit;
+  line-height: 1.6;
+  tab-size: 2;
+  /* 자동 줄바꿈 없이 가로 스크롤. 원문 뷰와 같은 모양을 유지한다. */
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow: auto;
+  resize: none;
+}
+
+.editor__input:focus {
+  outline: none;
+}
+
+.editor__input[readonly] {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.editor__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.editor__state {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

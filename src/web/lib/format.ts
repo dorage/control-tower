@@ -110,3 +110,12 @@ export function dayGroup(value: string | number | null | undefined): string {
   if (millis >= today - 7 * day) return "이번 주";
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(millis);
 }
+
+/** "14:03" (로컬 시간). 방금 일어난 일의 시각을 좁은 자리에 보일 때 쓴다. */
+export function clockTime(value: string | number | null | undefined): string {
+  const millis = toMillis(value);
+  if (millis === null) return MISSING;
+  const at = new Date(millis);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+}

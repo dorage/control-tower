@@ -5,9 +5,15 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve as resolveAbs, sep } from "node:path";
 import { config } from "../config";
-import type { FsEntry, FsFile, FsRoot } from "../domain/types";
+import type { FsEntry, FsFile, FsRoot, FsWriteResult } from "../domain/types";
 import { HttpError } from "../lib/http";
-import { readDirectory, readFileBytes, statEntry, type RawEntry } from "../repositories/fs.repository";
+import {
+  readDirectory,
+  readFileBytes,
+  statEntry,
+  writeFileAtomic,
+  type RawEntry,
+} from "../repositories/fs.repository";
 
 let rootsPromise: Promise<Map<string, FsRoot>> | null = null;
 
@@ -312,5 +318,81 @@ export async function readFile(rootId: string, relPath: string): Promise<FsFile>
     encoding: binary ? "binary" : "utf-8",
     // fatal: false - 깨진 바이트는 U+FFFD 가 된다. 잘못된 인코딩으로 500 을 내지 않는다.
     content: binary ? null : new TextDecoder("utf-8", { fatal: false }).decode(bytes),
+  };
+}
+
+export interface WriteOptions {
+  /** 마지막으로 읽은 version. 기존 파일을 덮어쓸 때는 필수다. */
+  baseVersion?: string | null;
+  createIfMissing?: boolean;
+}
+
+/**
+ * 마크다운 저장. 절차의 **순서가 곧 보안이다**:
+ * 크기 → 경로 해석 → 확장자 허용목록 → 파일 접근 → 낙관적 잠금 → 원자적 쓰기.
+ *
+ * 서버에 강제 덮어쓰기 플래그를 두지 않는다. 충돌을 해소하려면 클라이언트가
+ * 다시 읽어 새 `baseVersion` 으로 저장한다.
+ */
+export async function writeFile(
+  rootId: string,
+  relPath: string,
+  content: string,
+  options: WriteOptions = {},
+): Promise<FsWriteResult> {
+  // 경로를 해석하기도 전에 거절한다. 큰 본문을 디스크까지 들고 가지 않는다.
+  const byteLength = Buffer.byteLength(content, "utf8");
+  if (byteLength > config.fsMaxReadBytes) {
+    throw new HttpError(413, `body too large: ${byteLength} bytes (max ${config.fsMaxReadBytes})`);
+  }
+
+  const { root, absolute, relative: rel } = await resolvePath(rootId, relPath);
+  if (rel === "") throw new HttpError(400, "path is required");
+
+  // 확장자 검사는 경로 해석 다음, 파일 접근 전에.
+  if (!isEditable(rel)) {
+    const ext = extname(rel).toLowerCase() || "(none)";
+    throw new HttpError(403, `not writable: ${ext} (allowed: ${config.writableExtensions.join(", ")})`);
+  }
+
+  const current = await statEntry(absolute);
+  if (current?.isDirectory) throw new HttpError(400, `is a directory: ${rel}`);
+
+  if (current === null) {
+    if (options.createIfMissing !== true) throw new HttpError(404, `not found: ${rel}`);
+    // baseVersion 을 보냈다는 것은 "내가 읽은 그 파일"을 기대했다는 뜻이다. 그 파일은 사라졌다.
+    if (options.baseVersion) throw new HttpError(409, "file does not exist", { currentVersion: null });
+  } else {
+    if (!options.baseVersion) {
+      throw new HttpError(400, "baseVersion is required to overwrite an existing file");
+    }
+    const version = versionOf(current.modifiedAt, current.size);
+    if (version !== options.baseVersion) {
+      throw new HttpError(409, "file changed on disk", { currentVersion: version });
+    }
+  }
+
+  try {
+    await writeFileAtomic(absolute, content);
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "EACCES" || code === "EROFS" || code === "EPERM") {
+      throw new HttpError(403, "permission denied");
+    }
+    throw error;
+  }
+
+  // content.length 로 version 을 계산하지 않는다. UTF-8 바이트 길이와 문자열 길이가 다르고
+  // mtime 은 파일시스템이 정한다. 어긋나면 바로 다음 저장이 409 로 실패한다.
+  const written = await statEntry(absolute);
+  if (!written) throw new HttpError(500, `write succeeded but file is missing: ${rel}`);
+
+  return {
+    root: root.id,
+    path: rel,
+    size: written.size,
+    modifiedAt: written.modifiedAt,
+    version: versionOf(written.modifiedAt, written.size),
+    created: current === null,
   };
 }

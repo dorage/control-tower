@@ -97,3 +97,15 @@
 2026-08-31T13:20:04Z NOTE T-004 "범위 추가: ChangeEvent 에 changedSessions/addedSessions/removedSessions 델타를 넣는다. fb-watchman 은 채택하지 않는다 — aarch64 prebuilt 부재로 소스 빌드 필요, fingerprint 맵 diff 로 의존성 0에 동일 효과"
 2026-08-31T13:20:05Z NOTE T-017 "범위 추가: 조건부 '오늘 비용' 타일(T-021 수집 시에만 렌더). 미수집 시 타일을 그리지 않는다 — $0.00 은 오해를 만든다"
 2026-08-31T13:20:06Z NOTE T-020 "선행을 T-022 까지로 확장. check-docs 에 AREA 유효성 검사 추가, 4317 경고와 *.db gitignore 를 수용 기준에 포함"
+2026-08-31T13:44:00Z START T-004
+2026-08-31T13:44:01Z NOTE T-004 "config.claudeDir 와 paths 를 getter 로 바꿨다. bun test 가 모듈 레지스트리를 공유해서, 최상단에서 env 를 한 번만 읽으면 테스트가 임시 CLAUDE_HOME 을 지정할 수 없다. workspaceRoots 에 이미 있던 선례와 같은 이유"
+2026-08-31T13:44:02Z NOTE T-004 "tick() 이 ChangeEvent | null 을 반환하게 해서 테스트 seam 을 하나로 줄였다. 리스너 등록용 seam 을 따로 두지 않는다"
+2026-08-31T13:44:03Z DONE T-004 "세션별 델타(changed/added/removed) + GET /api/events. 실측 검증: append→changedSessions=[해당 세션], 신규→addedSessions. 구독 해지 후 CPU 1 jiffy(=타이머 정지). 테스트 10종"
+2026-08-31T13:44:04Z START T-021
+2026-08-31T13:44:05Z NOTE T-021 "식별 정보(user.email·user.id·account_uuid·organization.id)를 tel_session 에 정규화하지 않고 아예 저장하지 않는다. 단일 사용자 로컬 도구에서 이 값을 읽는 화면이 없어, 한 번만 저장하는 것보다 버리는 것이 낫다. 명세보다 강한 선택"
+2026-08-31T13:44:06Z NOTE T-021 "tel_session 의 project_id 컬럼을 넣지 않았다. OTLP 페이로드에 프로젝트 정보가 없어 항상 NULL 이 되는 컬럼이다. started_at 대신 first_seen/last_seen 을 둔다"
+2026-08-31T13:44:07Z NOTE T-021 "config.telemetry 전체를 getter 로 뒀다. maxSeries·hardLimitBytes 를 런타임에 바꾸는 테스트가 필요했고, 값 하나 읽는 비용이 그 값이 막는 쿼리보다 훨씬 싸다"
+2026-08-31T13:44:08Z NOTE T-021 "GET /v1/metrics 가 정의되지 않은 메서드라 SPA 폴백으로 새어 앱 HTML 을 반환했다(PUT /api/health 는 정상적으로 405). 405 + 설정 힌트로 바꿨다 — 텔레메트리를 디버깅하는 사람이 브라우저로 여는 주소다"
+2026-08-31T13:44:09Z NOTE T-021 "실측 정정: PROTOCOL 누락 시 claude --debug 에도 흔적이 남지 않는다. 완전히 조용하다. 유일한 진단은 status.collecting=false 이고, 그래서 status 에 port 를 넣었다"
+2026-08-31T13:44:10Z NOTE T-021 "OTLP 정수 값이 asInt 가 아니라 asDouble 로 온다(897 도 asDouble). aggregationTemporality=1(DELTA) 확인. 손으로 만든 픽스처로는 못 잡을 차이라 실측 페이로드를 test/fixtures 에 고정했다 — 식별 정보는 더미로 치환"
+2026-08-31T13:44:11Z DONE T-021 "POST /v1/metrics·/v1/logs + bun:sqlite 저장소 + GET /api/telemetry/{status,tokens,cost,timeseries,latency}. 실제 claude 왕복 검증: query_source main 22969 vs auxiliary 907(오버헤드 3.8%), cost $0.0205, 지연 백분위. 깨진 페이로드 10종 전부 200. 테스트 22종"

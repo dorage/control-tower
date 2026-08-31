@@ -45,16 +45,20 @@
 
 ```
 route  →  service  →  repository  →  disk
+                          ↘
+                           db (bun:sqlite 핸들·스키마)
    ↘         ↘            ↘
         lib / domain(types)
 ```
 
 - 역방향 import 금지. repository가 service를 부르지 않는다.
 - route는 repository를 직접 부르지 않는다. 반드시 service를 경유한다.
+- `src/db/*`는 연결·스키마·PRAGMA 만 둔다. 쿼리는 repository 에 둔다. repository 만 `db/` 를 import 한다.
 - `src/domain/types.ts`는 타입만 export 한다. 로직을 두지 않는다.
 - `src/lib/*`는 도메인 지식이 없는 순수 유틸만 둔다. 유일한 예외는 `http.ts`가 요청 로깅 스위치 하나 때문에 `config.ts`를 import 하는 것이다(`config.ts`는 잎 모듈이라 순환이 없다).
 - `src/web/*`는 서버 코드를 import 하지 않는다. 단, `src/domain/types.ts`의 **타입만** `import type`으로 공유한다.
 - 라우트 모듈은 **경로 → 메서드별 핸들러 레코드**를 named export 한다(`export const xRoutes = { "/api/x": { GET: ... } }`). 함수를 직접 주지 않는다 — 명시하지 않은 메서드에 대해 Bun이 405를 돌려주게 하기 위해서다.
+- **다만 그 405 는 GET 에는 적용되지 않는다.** SPA 폴백 `"/*": index` 가 GET 을 처리하므로, GET 핸들러가 없는 경로에 GET 이 오면 405 가 아니라 폴백이 매칭돼 앱 HTML 이 나간다(실측: `PUT /api/health` → 405, `GET /v1/metrics`(POST 전용) → 200 + HTML). GET 이 아닌 메서드만 405 를 기대할 수 있다. 브라우저로 열어볼 수 있는 API 경로라면 GET 핸들러를 명시해 진단 응답을 돌려준다.
 - 라우트 조합은 `src/routes/index.ts`에서**만** 한다. 새 라우트 모듈을 추가할 때 다른 파일을 건드리지 않는다.
 
 ## 6. 코드 스타일
@@ -77,6 +81,8 @@ route  →  service  →  repository  →  disk
 - 정상 경로는 `json()`/`page()`를 **반환**하고, 예외 상황은 `throw new HttpError(...)`로 **던진다**. 두 방식을 한 핸들러 안에서 섞지 않는다.
 - 쿼리 파싱 실패(`limit=abc`)는 400이 아니라 기본값으로 처리한다 — 읽기는 방어적으로.
 - 사용자 입력 오류는 400, 없는 리소스는 404, 낙관적 잠금 충돌은 409, 허용되지 않은 경로/확장자는 403.
+- **스트리밍 응답은 세 경로 모두에서 멱등하게 정리한다.** `req.signal`의 `abort`, `ReadableStream.cancel`, 그리고 `controller.enqueue` 실패. `cleanup()`을 여러 번 불러도 안전해야 한다(핸들을 null 로 비운다). 하나라도 빠뜨리면 클라이언트가 사라진 뒤에도 구독과 타이머가 남는다.
+- **외부 도구가 POST 하는 수집 엔드포인트는 파싱 실패에도 `200`을 돌려준다.** OTLP 같은 클라이언트는 4xx/5xx 를 재시도 대상으로 보고 큐를 쌓으므로, 우리가 못 읽은 것을 실패로 알리면 한 번의 잘못된 페이로드가 재시도 폭주가 된다. 이런 라우트는 `withRoute`로 감싸지 않는다(그 래퍼가 하는 일이 정확히 반대다). 오류는 서버 로그로만 남긴다.
 - 서버 로그 접두사는 `[control-tower]`.
 
 ## 8. HTTP 규약
@@ -91,6 +97,8 @@ route  →  service  →  repository  →  disk
 - 서비스가 도메인에 맞는 필드명(`listSessions`의 `sessions`)을 쓰더라도 HTTP 봉투의 필드는 언제나 `items`다. 변환은 라우트에서 한다.
 - 경로 파라미터를 쓰는 핸들러는 `Bun.BunRequest<"/api/…/:id">`로 타입을 받는다. `req.params`는 이미 URL 디코딩된 값이다.
 - `LOG_REQUESTS=1`일 때만 `withRoute`가 요청 한 줄 로그를 남긴다. 기본은 끔.
+- **이 절의 규약은 `/api/*` 에만 적용된다.** 외부 규격을 그대로 받아야 하는 경로(`/v1/metrics`, `/v1/logs` — OTLP)는 규격이 정한 응답을 돌려주며, 예외인 이유를 해당 라우트 파일 최상단 주석에 적는다.
+- 새 라우트 모듈은 `src/routes/index.ts`에서만 조합한다. `Bun.serve`의 `routes`는 구체적 경로를 와일드카드보다 먼저 매칭하지만, **정의하지 않은 메서드는 405 가 아니라 `"/*"` 폴백으로 새는 경우가 있다.** 외부에서 열어볼 수 있는 경로라면 사용하지 않는 메서드에도 진단용 핸들러를 둔다.
 - 자세한 규약은 [ENDPOINTS.md](./ENDPOINTS.md).
 
 ## 9. 보안
@@ -104,7 +112,22 @@ route  →  service  →  repository  →  disk
 - **낙관적 잠금은 `version` 왕복으로만 한다.** 클라이언트가 읽은 `version`을 `baseVersion`으로 되돌려 보내고, 서버는 현재 `version`과 다르면 409 + `currentVersion`을 준다. 강제 덮어쓰기 플래그를 서버에 두지 않는다 — 덮어쓰기는 클라이언트가 다시 읽어 재저장하는 것으로 표현한다.
 - 쓰기 뒤 응답의 `version`은 반드시 다시 `stat`해서 만든다. `content.length`로 계산하면(UTF-8 바이트 수 ≠ 문자 수, mtime 은 파일시스템이 정함) 바로 다음 저장이 409로 실패한다.
 - 낙관적 잠금 키는 `versionOf(modifiedAt, size)`로만 만든다. 읽기와 쓰기가 같은 함수를 쓰지 않으면 `mtimeMs` 소수점 때문에 미묘하게 어긋난다.
+- **수집한 텔레메트리에서 식별 정보를 저장하지 않는다.** OTLP 페이로드에는 매 레코드마다 `user.email`·`user.id`·`user.account_uuid`·`organization.id`가 붙어 오지만, 단일 사용자용 로컬 도구에서 이 값을 읽는 화면이 없다. 정규화해 한 번만 저장하는 것보다 아예 버리는 것이 낫다.
+- `OTEL_LOG_USER_PROMPTS`/`OTEL_LOG_ASSISTANT_RESPONSES`를 켜도록 안내하지 않는다. 프롬프트 본문은 이미 `history.jsonl`과 트랜스크립트에 있어 중복이고, DB 에 복제할 이유가 없다.
+- 테스트 픽스처로 실측 페이로드를 쓸 때는 식별 정보를 더미로 치환하고, 커밋 전에 원본 문자열이 남지 않았는지 확인한다.
+- 데이터베이스 파일(`*.db`, `*.db-wal`, `*.db-shm`)은 `.gitignore`에 둔다.
 - 서버는 기본적으로 로컬 네트워크용이다. 인증은 범위 밖이며, 외부 노출 시 별도 작업으로 다룬다.
+
+## 9.1 저장소 (SQLite)
+
+- `bun:sqlite`만 쓴다. ORM·마이그레이션 도구를 도입하지 않는다. 스키마는 `create table if not exists` 한 덩어리로 두고 한 곳(`src/db/*.db.ts`)에서만 연다.
+- **`pragma auto_vacuum = incremental`은 첫 테이블이 생기기 전에 설정한다.** 나중에 바꾸려면 full VACUUM 이 필요하고, full VACUUM 은 DB 크기만큼의 임시 공간을 더 쓴다.
+- `DELETE`는 파일을 줄이지 않는다. 회수는 `pragma incremental_vacuum(<페이지 수>)`로 하고, 한 번에 전량을 회수해 오래 멈추지 않도록 상한을 건다.
+- 현재 크기는 파일 `stat`이 아니라 `page_count * page_size`로 본다 — `-wal`에 있는 것을 놓치지 않기 위해서다.
+- **반복되는 고정 속성은 차원 테이블로 정규화하고 fact 행에는 정수 FK 만 둔다.** 원본 페이로드를 그대로 넣지 않는다(실측: OTLP 레코드 1.5 KB → 정규화 후 약 40배 감소).
+- **양이 늘어나는 저장소에는 유입 시점의 카디널리티 상한을 둔다.** 시간 기반 삭제 잡은 이미 디스크에 쓰인 뒤에 돌기 때문에 폭주를 막지 못한다. 상한을 넘는 조합은 버리지 말고 `__other__` 같은 한 시리즈로 접어 총합을 보존한다.
+- 롤업(집계 후 원본 삭제)은 **집계와 삭제를 한 트랜잭션**에 넣는다. `on conflict do update set value = value + excluded.value`는 원본이 원자적으로 사라질 때만 멱등하다.
+- 보존 잡 주기는 분이 아니라 시간 단위다. 이 프로젝트는 SD 카드에서 돈다.
 
 ## 10. 프론트엔드
 
@@ -147,7 +170,10 @@ route  →  service  →  repository  →  disk
 
 - 대상 파일 옆에 `*.test.ts`.
 - 순수 함수(`src/lib`, 파싱/집계 로직)와 경로 보안 로직은 반드시 테스트한다.
-- 디스크에 의존하는 테스트는 임시 디렉터리를 만들어 쓰고 정리한다. 사용자의 실제 `~/.claude`를 건드리지 않는다.
+- 디스크에 의존하는 테스트는 임시 디렉터리를 만들어 쓰고 정리한다. 사용자의 실제 `~/.claude`와 텔레메트리 DB 를 건드리지 않는다.
+- **`config.ts`의 값은 getter 로 둔다.** `bun test`는 모듈 레지스트리를 테스트 파일 간에 공유하므로, 모듈 최상단에서 `Bun.env`를 한 번만 읽으면 테스트가 환경변수를 바꿔도 반영되지 않는다. 동적 `import`로는 해결되지 않는다(다른 테스트 파일이 이미 평가했을 수 있다).
+- 외부 규격을 파싱하는 코드는 **실측 페이로드를 픽스처로 고정**한다. 손으로 만든 페이로드는 실제 형태와 어긋난다(예: OTLP 정수 값이 `asInt`가 아니라 `asDouble`로 온다).
+- 방어적 파서는 `null`/`undefined`/문자열/숫자/중첩 `null`을 넣어 **예외를 던지지 않는 것**을 테스트한다.
 
 ## 12. 문서화 의무
 
@@ -157,4 +183,6 @@ route  →  service  →  repository  →  disk
 - `docs/STRUCTURE.md` — 파일/디렉터리가 늘거나 계층이 바뀌었는가
 - `docs/ENDPOINTS.md` — 엔드포인트가 추가/변경되었는가
 
-그리고 `docs/TODO.md`에 `DONE` 줄을 append 한다.
+그리고 `docs/TODO.md`에 `DONE` 줄을 append 한다. `TODO.md`는 추가 전용이다 — 기존 줄을 고치지 않는다.
+
+`docs/TODO.md`를 도구로 파싱할 때는 **줄 전체가 `## LOG` 인 줄**을 찾는다(`line.trim() === "## LOG"`). 부분문자열로 찾으면 규칙 6번의 `` `## LOG` 아래만 로그다 `` 문구에 먼저 걸려 규칙 절 중간을 시작점으로 잡고, 예시 블록의 가짜 경로와 타임스탬프 때문에 거짓 위반이 보고된다.

@@ -63,7 +63,9 @@ speed, query_source, prompt.id, session.id, event.timestamp, event.sequence
 
 **결정: control-tower 가 4317 을 그대로 쓰고 `/v1/metrics`·`/v1/logs` 를 직접 받는다.** 새 포트를 열지 않는다. `routes/index.ts`의 `"/*": index` SPA 폴백보다 구체적 경로가 먼저 매칭되므로 안전하다.
 
-**함정**: 사용자가 `OTEL_EXPORTER_OTLP_PROTOCOL` 을 빼먹으면 기본값이 `grpc` 라서 claude 가 4317 로 gRPC 를 시도하고 **조용히 실패**한다. 에러가 화면에 뜨지 않는다. 진단은 `claude --debug` 로그의 `[3P telemetry]` 로 한다. 이 함정을 `docs/README.md` 설정 안내에 굵게 박는다.
+**함정**: 사용자가 `OTEL_EXPORTER_OTLP_PROTOCOL` 을 빼먹으면 기본값이 `grpc` 라서 claude 가 4317 로 gRPC 를 시도하고 **조용히 실패**한다. 이 함정을 `docs/README.md` 설정 안내에 굵게 박는다.
+
+> **실측 정정**: 이 문서는 처음에 "진단은 `claude --debug` 로그의 `[3P telemetry]` 로 한다"고 적었는데, 실제로 재현해 보니 **`--debug` 출력에도 아무 흔적이 남지 않았다.** 완전히 조용하다. 유일하게 실용적인 진단은 `GET /api/telemetry/status` 의 `collecting` 이 계속 `false` 인 것을 보는 것이다. 그래서 `status` 응답에 `port` 를 넣어 화면의 설정 안내가 실제 포트를 쓸 수 있게 했다.
 
 ## 4. 산출물
 

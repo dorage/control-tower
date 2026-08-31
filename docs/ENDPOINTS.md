@@ -117,7 +117,7 @@
 
 `{ total, offset, limit, items: HistoryEntry[] }`. `timestamp` 내림차순.
 
-### `GET /api/events` ⬜ T-004
+### `GET /api/events` ✅
 
 Server-Sent Events. `~/.claude` 데이터가 바뀌면 이벤트를 푸시한다.
 
@@ -125,10 +125,12 @@ Server-Sent Events. `~/.claude` 데이터가 바뀌면 이벤트를 푸시한다
 Content-Type: text/event-stream
 
 event: ready
-data: {"at":"2026-08-29T00:00:00.000Z"}
+data: {"at":"2026-08-31T13:32:08.984Z"}
 
 event: change
-data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"at":"..."}
+data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSessions":0,
+       "at":"2026-08-31T13:32:15.774Z","changedSessions":["s-probe"],
+       "addedSessions":[],"removedSessions":[]}
 
 : ping
 ```
@@ -137,6 +139,18 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 - 데이터 변경 시 `change`.
 - 25초마다 주석 라인(`: ping`)으로 keep-alive.
 - 클라이언트가 끊으면 구독 해제. 구독자가 0이면 폴링 타이머도 멈춘다.
+
+`change` 는 **무엇이 바뀌었는지 함께 알려준다.** 수신 측이 전체를 다시 읽지 않아도 되게 하는 것이 이 필드들의 목적이다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `changedSessions` | 트랜스크립트 크기/시각 또는 라이브 세션 상태가 달라진 세션 id |
+| `addedSessions` | 처음 나타난 세션 id |
+| `removedSessions` | 사라진 세션 id |
+
+세 배열 모두 정렬돼 있다. 트랜스크립트와 라이브 세션 파일은 같은 `sessionId` 키 공간을 쓰므로, 한 세션의 두 소스가 동시에 바뀌어도 한 번만 보고된다.
+
+**연결 직후에는 `change` 가 오지 않는다.** 첫 폴링은 관측 상태만 채우고 아무것도 알리지 않는다 — 기존 세션 전부를 `addedSessions` 로 보고하면 클라이언트가 접속할 때마다 전체를 다시 읽게 되기 때문이다.
 
 ---
 
@@ -268,6 +282,85 @@ data: {"type":"change","fingerprint":"a1b2","transcripts":42,"liveSessions":3,"a
 - 쓰기는 같은 디렉터리의 임시 파일(`.<name>.tmp-<pid>-<n>`)에 쓴 뒤 `rename`으로 원자 교체한다. 실패해도 임시 파일을 남기지 않는다.
 - 응답의 `version`은 쓰기 뒤 다시 `stat`한 결과로 만든다. 그래서 방금 받은 `version`으로 곧바로 다시 저장해도 409가 나지 않는다.
 - **서버에 강제 덮어쓰기 플래그는 없다.** 409를 해소하는 방법은 하나뿐이다 — 클라이언트가 `GET /api/fs/file`로 최신 `version`을 다시 받아 그것을 `baseVersion`으로 삼아 재저장한다. `src/web/hooks/use-editor-file.ts`의 `overwrite()`가 그 흐름이다.
+
+---
+
+## 텔레메트리
+
+Claude Code 의 OpenTelemetry 내보내기를 직접 받는다. 수집을 켜는 방법은 `docs/README.md` 를 본다.
+
+### `POST /v1/metrics` ✅ · `POST /v1/logs` ✅
+
+OTLP/HTTP(`http/json`) 수신 엔드포인트. **이 두 경로는 위의 `/api/*` 공통 규약을 따르지 않는다.**
+
+| 차이 | 이유 |
+| --- | --- |
+| 파싱 실패에도 항상 `200` | OTLP 클라이언트는 4xx/5xx 를 재시도 대상으로 보고 큐를 쌓는다. 우리가 못 읽은 것을 실패로 돌려주면 한 번의 잘못된 export 가 재시도 폭주가 된다. 오류는 서버 로그로만 남긴다 |
+| 목록 봉투·`{error}` 형식 없음 | OTLP 규격 응답(`{"partialSuccess":{}}`)을 돌려준다 |
+| `withRoute` 미사용 | 예외를 상태 코드로 바꾸는 래퍼가 위 두 항목과 정면으로 충돌한다 |
+
+`TELEMETRY_ENABLED=0` 이면 본문을 파싱하지 않고 `200` 만 돌려준다(설정된 claude 가 영원히 재시도하지 않도록). 이 경우 DB 파일을 만들지 않는다.
+
+`GET` 으로 열면 `405` 와 함께 설정 힌트를 돌려준다. SPA 폴백으로 새어 앱 화면이 뜨면 텔레메트리를 디버깅하는 사람에게 혼란스럽기 때문이다.
+
+> **⚠️ 포트 4317 은 OTLP gRPC 의 기본 포트이기도 하다.** 여기서는 HTTP 를 받으므로 보내는 쪽이 `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` 을 **반드시** 지정해야 한다. 빠뜨리면 claude 가 gRPC 로 시도하고 **완전히 조용히** 실패한다 — `claude --debug` 출력에도 아무 흔적이 남지 않는다. 유일하게 실용적인 진단은 `GET /api/telemetry/status` 의 `collecting` 이 계속 `false` 인 것을 보는 것이다.
+
+### `GET /api/telemetry/status` ✅
+
+```ts
+{
+  enabled: boolean;          // TELEMETRY_ENABLED
+  collecting: boolean;       // 한 건이라도 받았는가
+  since: string | null;      // 가장 오래된 보관 표본 (ISO). 소급 수집은 불가능하다
+  dbBytes: number;
+  softLimitBytes: number;    // 넘으면 경고 로그
+  hardLimitBytes: number;    // 넘으면 오래된 raw 를 강제 삭제
+  series: number; sessions: number; points: number; requests: number;
+  port: number;              // 화면의 설정 안내가 실제 포트를 쓸 수 있게
+}
+```
+
+### `GET /api/telemetry/tokens` ✅ · `GET /api/telemetry/cost` ✅
+
+| 파라미터 | 기본값 | 설명 |
+| --- | --- | --- |
+| `from` | `to - 24h` | epoch ms |
+| `to` | 현재 | epoch ms. `from >= to` 는 400 |
+| `bucket` | `hour` | `raw` \| `hour` \| `day`. 그 외는 400 |
+| `groupBy` | `model` | `type` \| `model` \| `query_source` \| `speed` \| `effort` \| `agent` \| `skill`. 그 외는 400 |
+
+```ts
+{ items: Array<{ key: string; value: number }>;   // value 내림차순
+  total: number;
+  degraded: "hour" | null }
+```
+
+`tokens` 는 `token.usage`(단위 tokens), `cost` 는 `cost.usage`(단위 USD)를 집계한다. 속성이 없는 그룹은 `"(none)"` 키로 모인다.
+
+**`degraded`**: `bucket=raw` 인데 `from` 이 raw 보존 기간(`TEL_RETAIN_RAW_DAYS`) 밖이면 조용히 `hour` 로 승격하고 이 필드에 `"hour"` 를 넣는다. 빈 결과를 돌려주면 사용자가 데이터가 없다고 오해하기 때문이다. 에러가 아니다.
+
+### `GET /api/telemetry/timeseries` ✅
+
+위 파라미터에 `metric`(기본 `token.usage`)이 추가된다.
+
+```ts
+{ buckets: number[];                                  // epoch ms, 오름차순
+  series: Array<{ key: string; values: number[] }>;    // values 길이 = buckets 길이
+  degraded: "hour" | null }
+```
+
+`bucket=raw` 도 시간 단위로 접어서 돌려준다 — 10초 해상도는 차트로 읽을 수 없다.
+
+### `GET /api/telemetry/latency` ✅
+
+`from`·`to`·`groupBy` 만 쓴다(`bucket` 무시). `api_request` 의 `duration_ms` 분포다.
+
+```ts
+{ items: Array<{ key: string; count: number;
+                 p50: number; p95: number; p99: number; max: number }> }  // count 내림차순
+```
+
+백분위는 확장 함수 없이 윈도 함수로 순위를 매겨 `ceil(count * p / 100)` 번째 행을 고른다.
 
 ---
 

@@ -18,10 +18,15 @@ control-tower/
 │   ├── STRUCTURE.md                ✅        (이 문서)
 │   ├── ENDPOINTS.md                ✅
 │   └── todos/T-0xx-*.md            ✅        작업 단위별 자기완결 명세
+├── test/
+│   └── fixtures/otlp-*.json        ✅        실측 OTLP 페이로드 (식별 정보는 더미로 치환)
 └── src/
     ├── config.ts                   ✅        환경변수 → 설정 객체, 경로 상수
     ├── domain/
-    │   └── types.ts                ✅        디스크 원본 타입 + 도메인 타입
+    │   ├── types.ts                ✅        디스크 원본 타입 + 도메인 타입
+    │   └── telemetry.ts            ✅        OTLP 원본 타입 + 시리즈 키·조회 타입
+    ├── db/
+    │   └── telemetry.db.ts         ✅        bun:sqlite 핸들·스키마·PRAGMA (auto_vacuum=incremental)
     ├── lib/                                  도메인 지식 없는 순수 유틸
     │   ├── http.ts                 ✅        응답 헬퍼 · 쿼리 파싱 · HttpError · withRoute
     │   ├── http.test.ts             ✅
@@ -30,6 +35,7 @@ control-tower/
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
     │   ├── transcript.repository.ts   ✅     ~/.claude/projects/<project>/<id>.jsonl (LRU 캐시)
+    │   ├── telemetry.repository.ts ✅        텔레메트리 insert·집계 조회·롤업·보존·크기 차단기
     │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
@@ -37,7 +43,10 @@ control-tower/
     │   ├── project.service.ts      ✅
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
     │   ├── stats.service.ts        ✅
-    │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독
+    │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독 + 세션별 변경 델타
+    │   ├── watch.service.test.ts    ✅        diffState · 델타 통합 테스트
+    │   ├── telemetry.service.ts    ✅        OTLP 파싱 · 카디널리티 가드 · 보존 스케줄 · 조회
+    │   ├── telemetry.service.test.ts ✅      파싱·가드·롤업 멱등·크기 차단기 테스트
     │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
     │   └── fs.service.test.ts       ✅        경로 탈출 방어 · 저장 충돌·원자성 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
@@ -47,7 +56,9 @@ control-tower/
     │   ├── project.route.ts        ✅        /api/projects
     │   ├── stats.route.ts          ✅        /api/stats
     │   ├── history.route.ts        ✅        /api/history
-    │   ├── events.route.ts         ⬜ T-004  SSE
+    │   ├── events.route.ts         ✅        /api/events (SSE)
+    │   ├── telemetry.route.ts      ✅        /api/telemetry/status · tokens · cost · timeseries · latency
+    │   ├── otlp.route.ts           ✅        POST /v1/metrics · /v1/logs (OTLP 수신, /api 규약 예외)
     │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        스크립트·스타일 연결
@@ -113,7 +124,7 @@ routes  →  services  →  repositories  →  디스크
 
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
-| `PORT` | `4317` | 리슨 포트 |
+| `PORT` | `4317` | 리슨 포트. **⚠️ OTLP gRPC 의 기본 포트와 같다** — 이 포트에서 OTLP/HTTP 를 겸용하므로 보내는 쪽이 `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` 을 반드시 지정해야 한다. 빠뜨리면 조용히 실패한다 (`docs/ENDPOINTS.md` 텔레메트리 절) |
 | `HOST` | `0.0.0.0` | 리슨 호스트 |
 | `CLAUDE_HOME` | `$HOME/.claude` | 관찰 대상 Claude 데이터 디렉터리 |
 | `WATCH_INTERVAL_MS` | `1500` | 변경 감지 폴링 주기 |
@@ -122,3 +133,13 @@ routes  →  services  →  repositories  →  디스크
 | `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분. 없는 경로는 조용히 제외 |
 | `FS_MAX_READ_BYTES` | `2097152` | 파일 읽기/쓰기 본문 상한 |
 | `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 |
+| `TELEMETRY_ENABLED` | `1` | `0`이면 OTLP 수신을 끈다. DB 파일도 만들지 않는다 |
+| `TELEMETRY_DB` | `$HOME/.control-tower/telemetry.db` | 텔레메트리 저장소. **`CLAUDE_HOME` 아래에 두면 안 된다** — 우리가 감시하는 디렉터리에 우리 파일을 쓰면 매 insert 마다 핑거프린트가 움직여 무한 change 이벤트가 된다 |
+| `TEL_RETAIN_RAW_DAYS` | `30` | 원본 데이터포인트 보존 |
+| `TEL_RETAIN_HOURLY_DAYS` | `400` | 시간 롤업 보존 |
+| `TEL_RETAIN_DAILY_DAYS` | `3650` | 일 롤업 보존 |
+| `TEL_RETAIN_REQUEST_DAYS` | `400` | 요청 단위 행 보존 |
+| `TEL_MAX_SERIES` | `2000` | 시리즈 카디널리티 상한. 초과분은 `__other__` 로 접힌다 |
+| `TEL_SOFT_LIMIT_BYTES` | `1610612736` (1.5 GiB) | 넘으면 경고 로그 |
+| `TEL_HARD_LIMIT_BYTES` | `4294967296` (4 GiB) | 넘으면 보존 기간을 무시하고 오래된 raw 삭제 |
+| `TEL_PRUNE_INTERVAL_MS` | `3600000` | 보존 잡 주기. SD 카드 쓰기를 아끼려고 1시간 |

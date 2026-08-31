@@ -4,13 +4,6 @@ import { compactNumber, dateTime } from "../lib/format";
 import { Badge } from "./ui";
 import { MarkdownPreview } from "./markdown-preview";
 
-export interface BlockFilters {
-  /** 사고 과정 블록을 그린다(기본은 접힌 채). */
-  thinking: boolean;
-  /** 툴 입력·결과 블록을 그린다. */
-  tools: boolean;
-}
-
 /**
  * 접기 블록. 펼치기 전에는 내용을 **만들지도 않는다** - 200개 엔트리에 붙은 툴 입출력을
  * 모두 렌더하면 DOM 노드가 수천 개가 된다. children 을 함수로 받는 이유다.
@@ -163,12 +156,6 @@ function BlockView({ block }: { block: TimelineBlock }) {
   }
 }
 
-function keep(block: TimelineBlock, filters: BlockFilters): boolean {
-  if (block.type === "thinking") return filters.thinking;
-  if (block.type === "tool_use" || block.type === "tool_result") return filters.tools;
-  return true;
-}
-
 const ROLE_LABEL: Record<string, string> = {
   user: "사용자",
   assistant: "어시스턴트",
@@ -177,15 +164,15 @@ const ROLE_LABEL: Record<string, string> = {
   event: "이벤트",
 };
 
-/** 엔트리 하나. 목록이 길어 memo 로 감싼다 - 필터 토글이 전부를 다시 그리지 않게. */
-export const TimelineEntryView = memo(function TimelineEntryView({
-  entry,
-  filters,
-}: {
-  entry: TimelineEntry;
-  filters: BlockFilters;
-}) {
-  const blocks = entry.blocks.filter((block) => keep(block, filters));
+/**
+ * 엔트리 하나. 목록이 길어 memo 로 감싼다.
+ *
+ * 어떤 블록을 보낼지는 서버가 정한다(`thinking`/`tools` 쿼리). 클라이언트에서 걸러 내면
+ * `total` 과 페이지 경계가 화면과 어긋나기 때문이다. 여기서는 받은 것을 그대로 그린다.
+ */
+export const TimelineEntryView = memo(function TimelineEntryView({ entry }: { entry: TimelineEntry }) {
+  const blocks = entry.blocks;
+  // 서버가 빈 엔트리를 보내지 않지만, 빈 껍데기를 그리는 것보다는 지나가는 쪽이 낫다.
   if (blocks.length === 0) return null;
 
   const classes = ["entry", `entry--${entry.kind}`];
@@ -218,17 +205,11 @@ export const TimelineEntryView = memo(function TimelineEntryView({
   );
 });
 
-export function TimelineView({
-  entries,
-  filters,
-}: {
-  entries: TimelineEntry[];
-  filters: BlockFilters;
-}) {
+export function TimelineView({ entries }: { entries: TimelineEntry[] }) {
   return (
     <div className="timeline">
       {entries.map((entry) => (
-        <TimelineEntryView key={entry.uuid ?? entry.index} entry={entry} filters={filters} />
+        <TimelineEntryView key={entry.uuid ?? entry.index} entry={entry} />
       ))}
     </div>
   );

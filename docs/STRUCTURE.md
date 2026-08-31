@@ -42,6 +42,7 @@ control-tower/
     │   ├── live.service.ts         ✅
     │   ├── project.service.ts      ✅
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
+    │   ├── session.service.test.ts ✅        타임라인 필터(대화/사고/툴/이벤트/서브에이전트)
     │   ├── stats.service.ts        ✅
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독 + 세션별 변경 델타
     │   ├── watch.service.test.ts    ✅        diffState · 델타 통합 테스트

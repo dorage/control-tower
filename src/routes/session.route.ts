@@ -36,7 +36,9 @@ export const sessionRoutes = {
         limit: intRange(url, "limit", 200, 1, 1000),
         offset: intRange(url, "offset", 0, 0, MAX_OFFSET),
         includeEvents: boolParam(url, "events", false),
-        includeSidechain: boolParam(url, "sidechain", true),
+        includeSidechain: boolParam(url, "sidechain", false),
+        includeThinking: boolParam(url, "thinking", false),
+        includeTools: boolParam(url, "tools", false),
       });
       if (!timeline) throw new HttpError(404, `session not found: ${req.params.id}`);
       // Timeline 은 이미 { total, offset, limit, entries } 봉투다. 다시 감싸지 않는다.

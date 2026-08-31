@@ -973,6 +973,12 @@ pre {
   user-select: none;
 }
 
+/* 토글 줄의 성격을 한 단어로 못박는다 - 켜는 것이 '추가'라는 걸 보이게. */
+.session-detail__filters-label {
+  color: var(--text-faint);
+  font-size: 0.86em;
+}
+
 .session-detail__range {
   margin-left: auto;
   color: var(--text-faint);

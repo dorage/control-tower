@@ -138,6 +138,29 @@ function isConversational(record: TranscriptRecord): boolean {
   return type === "user" || type === "assistant" || type === "system" || type === "attachment";
 }
 
+/**
+ * 사람과 모델이 주고받은 말인가.
+ *
+ * `system`(훅 요약·턴 소요)과 `attachment`(토큰 리마인더·스킬 목록 등 주입된 컨텍스트)는
+ * 본문이 있으니 렌더는 되지만 대화는 아니다. 실측 트랜스크립트 735줄에서 이 둘이 142줄,
+ * 그중 attachment 136줄이 `total_tokens_reminder` 류였다. 기본 화면에서는 이벤트로 취급해
+ * 감추고, `events=1` 일 때만 되살린다.
+ */
+function isDialogue(record: TranscriptRecord): boolean {
+  // isMeta 는 사람이 쓴 것처럼 들어오지만 사람이 쓰지 않은 줄이다 - 인터럽트 리마인더,
+  // /context 출력, local-command caveat. 요약 쪽 isUserPrompt 도 같은 이유로 이미 뺀다.
+  if (record.isMeta === true) return false;
+  const type = record.type ?? "";
+  return type === "user" || type === "assistant";
+}
+
+/** 블록 단위 필터. 사고 과정과 툴 입출력은 요청이 있을 때만 내려보낸다. */
+function keepBlock(block: TimelineBlock, thinking: boolean, tools: boolean): boolean {
+  if (block.type === "thinking") return thinking;
+  if (block.type === "tool_use" || block.type === "tool_result") return tools;
+  return true;
+}
+
 function eventLabel(record: TranscriptRecord): string {
   const type = record.type ?? "unknown";
   if (type === "ai-title") return `title: ${record.aiTitle ?? ""}`;
@@ -346,19 +369,37 @@ export interface TimelineOptions {
   offset?: number;
   includeEvents?: boolean;
   includeSidechain?: boolean;
+  /** 사고 과정 블록을 내려보낸다. */
+  includeThinking?: boolean;
+  /** 툴 입력·결과 블록을 내려보낸다. */
+  includeTools?: boolean;
 }
 
 export async function getTimeline(sessionId: string, options: TimelineOptions = {}): Promise<Timeline | null> {
-  const { limit = 200, offset = 0, includeEvents = false, includeSidechain = true } = options;
+  const {
+    limit = 200,
+    offset = 0,
+    includeEvents = false,
+    includeSidechain = false,
+    includeThinking = false,
+    includeTools = false,
+  } = options;
   const ref = await findTranscriptFile(sessionId);
   if (!ref) return null;
 
   const records = await readTranscript(ref);
   const entries: TimelineEntry[] = [];
   records.forEach((record, index) => {
-    if (!includeEvents && !isConversational(record)) return;
+    if (!includeEvents && !isDialogue(record)) return;
     if (!includeSidechain && record.isSidechain === true) return;
-    entries.push(toTimelineEntry(record, index));
+
+    const entry = toTimelineEntry(record, index);
+    entry.blocks = entry.blocks.filter((b) => keepBlock(b, includeThinking, includeTools));
+    // 남은 블록이 없으면 화면에 아무것도 그리지 못하는 엔트리다. 여기서 버려야
+    // total 과 페이지 경계가 실제로 보이는 개수와 일치한다 - 툴 결과만 담긴
+    // user 레코드가 트랜스크립트의 다수라, 안 버리면 200개 페이지에 20개만 뜬다.
+    if (entry.blocks.length === 0) return;
+    entries.push(entry);
   });
 
   return {

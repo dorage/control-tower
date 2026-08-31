@@ -86,13 +86,25 @@
 | --- | --- | --- |
 | `limit` | 200 | 1..1000 |
 | `offset` | 0 | ≥0 |
-| `events` | 0 | 1이면 비대화 이벤트 레코드 포함 |
-| `sidechain` | 1 | 0이면 서브에이전트 레코드 제외 |
+| `events` | 0 | 1이면 비대화 레코드(`mode`·`ai-title` 류, `system`, `attachment`, `isMeta`) 포함 |
+| `sidechain` | 0 | 1이면 서브에이전트 레코드 포함 |
+| `thinking` | 0 | 1이면 `thinking` 블록 포함 |
+| `tools` | 0 | 1이면 `tool_use`·`tool_result` 블록 포함 |
 
 `Timeline` (`{ sessionId, total, offset, limit, entries: TimelineEntry[] }`). 없으면 404.
 이미 봉투 형태라 목록 봉투로 다시 감싸지 않는다.
 
-`total`은 필터 적용 후의 엔트리 수다. `events`/`sidechain`을 바꾸면 페이지 경계도 바뀐다.
+**기본값은 대화만이다.** 아무 파라미터도 주지 않으면 사람이 쓴 프롬프트와 모델의 답변
+텍스트만 남는다. `system`(훅 요약·턴 소요)과 `attachment`(토큰 리마인더 등 주입된 컨텍스트), 그리고
+`isMeta` 레코드(인터럽트 리마인더·`/context` 출력처럼 사람이 쓴 것처럼 들어오지만 사람이
+쓰지 않은 줄)는 본문이 있어도 대화가 아니므로 `events` 쪽에 묶인다. 실측 735줄 트랜스크립트가 기본값에서
+22줄로 줄어든다.
+
+블록 필터(`thinking`·`tools`)는 **서버에서** 적용한다. 필터 후 블록이 하나도 남지 않은
+엔트리(예: 툴 결과만 담긴 `user` 레코드)는 응답에서 아예 빠진다. 클라이언트가 걸러 내면
+`total`에는 세어지고 화면에는 없는 엔트리가 생겨 페이지 경계가 어긋나기 때문이다.
+
+`total`은 필터 적용 후의 엔트리 수다. 다섯 파라미터 중 무엇을 바꿔도 페이지 경계가 함께 바뀐다.
 
 `TimelineEntry.blocks`는 5종의 유니온이다(`src/domain/types.ts`의 `TimelineBlock`).
 

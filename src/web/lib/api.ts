@@ -85,6 +85,8 @@ export interface TimelineOptions {
   offset?: number;
   events?: boolean;
   sidechain?: boolean;
+  thinking?: boolean;
+  tools?: boolean;
 }
 
 export interface TelemetryRange {

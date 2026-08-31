@@ -67,7 +67,8 @@ control-tower/
         ├── app.tsx                 ✅        라우트 → 화면 매핑 + document.title
         ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
         ├── lib/
-        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·히스토리
+        │   ├── debounce.ts         ✅        useDebouncedCallback (실시간 갱신 묶기)
+        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·히스토리·텔레메트리
         │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터 · setParam(s)
         │   ├── format.ts           ✅        숫자/시간/바이트 포맷 · tildePath · dayGroup
         │   ├── format.test.ts       ✅
@@ -78,7 +79,7 @@ control-tower/
         ├── hooks/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   ├── use-editor-file.ts  ✅        파일 로드/더티/저장 상태 기계 · 초안 보존
-        │   └── use-live.ts         ⬜ T-018  SSE 구독
+        │   └── use-live.ts         ✅        SSE 구독 (모듈 스코프 EventSource 하나, 참조 계수)
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
@@ -87,13 +88,16 @@ control-tower/
         │   ├── session-list.tsx    ✅        세션 카드(compact 지원)·날짜 구분선·복사 버튼
         │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
         │   ├── timeline.test.ts    ✅        toolSummary (잘린 JSON 방어)
-        │   ├── stat-tile.tsx       ⬜ T-017
+        │   ├── stat-tile.tsx       ✅        수치 타일 (링크형/비링크형)
+        │   ├── bar-breakdown.tsx   ✅        가로 막대 분포 (CSS 폭, 라이브러리 없음)
+        │   ├── stacked-timeline.tsx ✅       시계열 누적 막대 (인라인 SVG)
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
-            ├── dashboard.page.tsx      ✅        자리표시 (내용은 T-017)
+            ├── dashboard.page.tsx      ✅        타일 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
             ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(미리보기·원문·편집 3탭)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
-            └── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
+            ├── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
+            └── telemetry.page.tsx      ✅        토큰·비용 분포/추이/지연 + 미수집 설정 안내
 ```
 
 ## 계층 규칙

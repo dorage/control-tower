@@ -148,6 +148,8 @@ data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSes
 | `addedSessions` | 처음 나타난 세션 id |
 | `removedSessions` | 사라진 세션 id |
 
+**감시 범위는 `~/.claude` 뿐이다.** 워크스페이스(`WORKSPACE_ROOTS`) 파일 변경은 이 이벤트로 오지 않는다. 파일 화면의 실시간 갱신이 부수적인 이유이며, 워크스페이스 감시 추가는 별도 작업이다.
+
 세 배열 모두 정렬돼 있다. 트랜스크립트와 라이브 세션 파일은 같은 `sessionId` 키 공간을 쓰므로, 한 세션의 두 소스가 동시에 바뀌어도 한 번만 보고된다.
 
 **연결 직후에는 `change` 가 오지 않는다.** 첫 폴링은 관측 상태만 채우고 아무것도 알리지 않는다 — 기존 세션 전부를 `addedSessions` 로 보고하면 클라이언트가 접속할 때마다 전체를 다시 읽게 되기 때문이다.
@@ -375,10 +377,11 @@ OTLP/HTTP(`http/json`) 수신 엔드포인트. **이 두 경로는 위의 `/api/
 
 | 경로 | 화면 | 상태 |
 | --- | --- | --- |
-| `/` | 대시보드 | ⬜ T-017 (자리표시) |
+| `/` | 대시보드 | ✅ |
 | `/files?root=<루트 id>&path=<상대경로>` | 파일 탐색기 + 뷰어 | ✅ |
 | `/sessions?q=<검색어>&projectId=<프로젝트 id>` | 세션 목록 | ✅ |
 | `/sessions/:id?events=&sidechain=&thinking=&tools=&from=#entry-<n>` | 세션 타임라인 | ✅ |
+| `/telemetry` | 텔레메트리 대시보드 | ✅ |
 | 그 외 | 앱 내부 404 화면 | ✅ |
 
 `/files`의 선택 상태(`root`, `path`)는 쿼리에 담긴다. 그 URL을 그대로 공유하면 같은 파일이 열린다.

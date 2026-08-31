@@ -109,3 +109,18 @@
 2026-08-31T13:44:09Z NOTE T-021 "실측 정정: PROTOCOL 누락 시 claude --debug 에도 흔적이 남지 않는다. 완전히 조용하다. 유일한 진단은 status.collecting=false 이고, 그래서 status 에 port 를 넣었다"
 2026-08-31T13:44:10Z NOTE T-021 "OTLP 정수 값이 asInt 가 아니라 asDouble 로 온다(897 도 asDouble). aggregationTemporality=1(DELTA) 확인. 손으로 만든 픽스처로는 못 잡을 차이라 실측 페이로드를 test/fixtures 에 고정했다 — 식별 정보는 더미로 치환"
 2026-08-31T13:44:11Z DONE T-021 "POST /v1/metrics·/v1/logs + bun:sqlite 저장소 + GET /api/telemetry/{status,tokens,cost,timeseries,latency}. 실제 claude 왕복 검증: query_source main 22969 vs auxiliary 907(오버헤드 3.8%), cost $0.0205, 지연 백분위. 깨진 페이로드 10종 전부 200. 테스트 22종"
+2026-08-31T21:56:00Z NOTE T-013 "서버 측 왕복 재검증: 저장 후 즉시 재저장 200(409 아님), 외부 변경 후 저장 409+currentVersion, 비허용 확장자 403, editing.ts 순수 로직 8종 통과"
+2026-08-31T21:56:01Z DONE T-013 "미리보기·원문·편집 3탭 에디터. 브라우저 전용 항목(IME 조합, Cmd+Z, 초안 복원 배너, beforeunload, 파일 전환 확인, 5000줄 타이핑 성능)은 이 환경에 브라우저가 없어 끝까지 미검증 — 실사용 시 확인 필요"
+2026-08-31T22:10:00Z START T-017
+2026-08-31T22:10:01Z NOTE T-017 "SessionCard 는 T-015 가 이미 compact prop 과 함께 export 해 둬서 재사용만 했다. 막대는 bar-breakdown.tsx 로 빼서 T-022 와 공유한다"
+2026-08-31T22:10:02Z NOTE T-017 "Link 가 title 을 받도록 넓혔다. 토큰 타일이 hover 로 input/output/cache 분해를 보여주려면 필요했다"
+2026-08-31T22:10:03Z DONE T-017 "타일 5종(비용은 조건부) + 카드 4종. 카드 단위 에러 격리. 실데이터 확인: 세션 14·프로젝트 4·툴 Bash 437"
+2026-08-31T22:10:04Z START T-018
+2026-08-31T22:10:05Z NOTE T-018 "ChangeEvent 를 watch.service 에서 domain/types.ts 로 옮겼다. 작업 문서는 서비스에서 import type 하라고 했지만 그러면 CONVENTIONS §5(웹은 domain 타입만)를 뚫는다. 도메인으로 옮기면 둘 다 만족한다"
+2026-08-31T22:10:06Z NOTE T-018 "탭 복귀 시 빈 델타를 가진 가짜 ChangeEvent 를 만들지 않고 null 을 보낸다. 델타로 거르는 타임라인이 빈 배열을 '할 일 없음' 으로 읽기 때문"
+2026-08-31T22:10:07Z NOTE T-018 "작업 문서는 '어느 세션이 바뀐지 알 수 없으니 항상 재조회' 를 전제했는데, T-004 의 changedSessions 덕분에 남의 세션 변경으로 타임라인을 다시 그리지 않는다"
+2026-08-31T22:10:08Z DONE T-018 "단일 EventSource(번들 내 /api/events 참조 1개로 확인) + 연결 표시등 + 화면별 디바운스. 편집 중 dirty 는 절대 다시 읽지 않는다. 브라우저 전용 항목(표시등 색, 스크롤 보존, 탭 전환)은 미검증"
+2026-08-31T22:10:09Z START T-022
+2026-08-31T22:10:10Z NOTE T-022 "차트 라이브러리 없이 CSS 폭(막대)과 인라인 SVG rect(누적 시계열)로 그렸다. 색은 인덱스 기반 6칸 고정 — 무작위면 새로고침마다 바뀌어 읽을 수 없다"
+2026-08-31T22:10:11Z NOTE T-022 "미수집 상태를 에러가 아니라 정상적인 첫 상태로 다룬다. settings.json 은 사용자 소유라 대신 고치지 않고 복사용으로만 보여주며, 포트는 status.port 를 쓴다"
+2026-08-31T22:10:12Z DONE T-022 "/telemetry 화면. 6개 소스 병렬·카드 단위 에러 격리. 실데이터 확인: query_source main 22969 vs auxiliary 907, degraded 승격 동작"

@@ -228,7 +228,7 @@ export function TimelineView({
   return (
     <div className="timeline">
       {entries.map((entry) => (
-        <TimelineEntryView key={entry.index} entry={entry} filters={filters} />
+        <TimelineEntryView key={entry.uuid ?? entry.index} entry={entry} filters={filters} />
       ))}
     </div>
   );

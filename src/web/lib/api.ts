@@ -9,6 +9,7 @@ import type {
   Stats,
   Timeline,
 } from "../../domain/types";
+import type { Bucket, GroupBy, TelemetryStatus } from "../../domain/telemetry";
 
 export interface Page<T> {
   total: number;
@@ -86,6 +87,37 @@ export interface TimelineOptions {
   sidechain?: boolean;
 }
 
+export interface TelemetryRange {
+  from: number;
+  to: number;
+  bucket?: Bucket;
+  groupBy?: GroupBy;
+}
+
+export interface TelemetryBreakdown {
+  items: Array<{ key: string; value: number }>;
+  total: number;
+  /** 서버가 요청한 해상도를 낮췄으면 그 해상도. 에러가 아니다. */
+  degraded: Bucket | null;
+}
+
+export interface TelemetryTimeseries {
+  buckets: number[];
+  series: Array<{ key: string; values: number[] }>;
+  degraded: Bucket | null;
+}
+
+export interface TelemetryLatency {
+  items: Array<{
+    key: string;
+    count: number;
+    p50: number;
+    p95: number;
+    p99: number;
+    max: number;
+  }>;
+}
+
 export const api = {
   health: () =>
     request<{ ok: boolean; uptimeMs: number; version: string; claudeDir: string }>("/api/health"),
@@ -105,6 +137,20 @@ export const api = {
 
   history: (opts: { project?: string | null; sessionId?: string | null; limit?: number } = {}) =>
     request<Page<HistoryEntry>>(`/api/history${query({ ...opts })}`),
+
+  telemetryStatus: () => request<TelemetryStatus>("/api/telemetry/status"),
+
+  telemetryTokens: (opts: TelemetryRange) =>
+    request<TelemetryBreakdown>(`/api/telemetry/tokens${query({ ...opts })}`),
+
+  telemetryCost: (opts: TelemetryRange) =>
+    request<TelemetryBreakdown>(`/api/telemetry/cost${query({ ...opts })}`),
+
+  telemetryTimeseries: (opts: TelemetryRange & { metric?: string }) =>
+    request<TelemetryTimeseries>(`/api/telemetry/timeseries${query({ ...opts })}`),
+
+  telemetryLatency: (opts: TelemetryRange) =>
+    request<TelemetryLatency>(`/api/telemetry/latency${query({ ...opts })}`),
 
   fsRoots: () => request<{ items: FsRoot[] }>("/api/fs/roots"),
 

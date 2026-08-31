@@ -1,20 +1,9 @@
 import { config } from "../config";
 import { listTranscriptFiles } from "../repositories/transcript.repository";
 import { listLiveSessions } from "../repositories/live-session.repository";
+import type { ChangeEvent } from "../domain/types";
 
-export interface ChangeEvent {
-  type: "change";
-  fingerprint: string;
-  transcripts: number;
-  liveSessions: number;
-  at: string;
-  /** Sessions whose transcript size/mtime or live-session state moved. */
-  changedSessions: string[];
-  /** Sessions seen for the first time. */
-  addedSessions: string[];
-  /** Sessions that disappeared. */
-  removedSessions: string[];
-}
+export type { ChangeEvent };
 
 type Listener = (event: ChangeEvent) => void;
 

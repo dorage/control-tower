@@ -1,8 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "../../domain/types";
 import { CopyButton, sessionTitle } from "../components/session-list";
 import { TimelineView, type BlockFilters } from "../components/timeline";
 import { Badge, Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { useQuery } from "../hooks/use-query";
+import { useLiveChange } from "../hooks/use-live";
+import { useDebouncedCallback } from "../lib/debounce";
 import { ApiError, api } from "../lib/api";
 import { compactNumber, dateTime, duration, tildePath } from "../lib/format";
 import { Link, setParams, useLocation } from "../lib/router";
@@ -34,6 +37,47 @@ export function SessionDetailPage({ id }: { id: string }) {
   // 참조가 매번 바뀌면 TimelineEntryView 의 memo 가 무력해진다.
   const filters = useMemo<BlockFilters>(() => ({ thinking, tools }), [thinking, tools]);
 
+  /**
+   * 실시간 갱신 — 읽던 자리를 흔들지 않는 것이 전부다.
+   *
+   * 1. 이 세션이 바뀌지 않았으면 아무것도 하지 않는다. T-004 가 changedSessions 를
+   *    주기 전에는 "무엇이 바뀌었는지 모르니 항상 재조회"였는데, 이제 남의 세션이
+   *    움직였다고 내 화면을 다시 그리는 일이 없다. (event === null 은 탭이 숨겨져
+   *    있던 동안을 뜻하므로 그때만 무조건 갱신한다.)
+   * 2. 마지막 페이지를 보고 있을 때만 자동으로 다시 읽는다. 앞 페이지를 읽는 중이면
+   *    배너만 띄운다 — 읽던 위치가 통째로 바뀌면 방해다.
+   * 3. 맨 아래에 있었으면 새 내용 아래로 따라 내리고, 아니면 스크롤을 그대로 둔다.
+   */
+  const [staleBanner, setStaleBanner] = useState(false);
+  const stickToBottom = useRef(false);
+  // 페이지네이션 상태를 디바운스 콜백이 stale closure 없이 읽게 한다.
+  const timelineRef = useRef<{ shown: number; total: number }>({ shown: 0, total: 0 });
+
+  const onLive = useDebouncedCallback((event: ChangeEvent | null) => {
+    if (event && !event.changedSessions.includes(id) && !event.addedSessions.includes(id)) return;
+
+    const atLastPage = from + (timelineRef.current?.shown ?? 0) >= (timelineRef.current?.total ?? 0);
+    if (!atLastPage) {
+      setStaleBanner(true);
+      return;
+    }
+    const main = document.querySelector(".main");
+    stickToBottom.current = main
+      ? main.scrollTop + main.clientHeight >= main.scrollHeight - 50
+      : false;
+    timeline.reload();
+  }, 2000);
+  useLiveChange(onLive);
+
+  // 자동 갱신 뒤, 맨 아래에 있었던 경우에만 따라 내린다.
+  const timelineData = timeline.data;
+  useEffect(() => {
+    if (!timelineData || !stickToBottom.current) return;
+    stickToBottom.current = false;
+    const main = document.querySelector(".main");
+    if (main) main.scrollTop = main.scrollHeight;
+  }, [timelineData]);
+
   const summary = session.data;
   useEffect(() => {
     if (summary) document.title = `${sessionTitle(summary)} · control tower`;
@@ -64,12 +108,26 @@ export function SessionDetailPage({ id }: { id: string }) {
 
   const total = timeline.data?.total ?? 0;
   const shown = entries?.length ?? 0;
+  timelineRef.current = { shown, total };
   const transcriptPath = health.data
     ? `${health.data.claudeDir}/projects/${summary.projectId}/${summary.id}.jsonl`
     : null;
 
   return (
     <div className="session-detail">
+      {staleBanner ? (
+        <div className="live-banner">
+          <span>새 메시지가 있습니다.</span>
+          <Button
+            onClick={() => {
+              setStaleBanner(false);
+              setParams({ from: String(Math.max(0, total - PAGE_SIZE)) });
+            }}
+          >
+            최신으로
+          </Button>
+        </div>
+      ) : null}
       <header className="session-detail__head">
         <Link to="/sessions" className="session-detail__back">
           ← 세션 목록

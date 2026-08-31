@@ -3,6 +3,8 @@ import type { SessionSummary } from "../../domain/types";
 import { SessionCardSkeleton, SessionList } from "../components/session-list";
 import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { useQuery } from "../hooks/use-query";
+import { useLiveChange } from "../hooks/use-live";
+import { useDebouncedCallback } from "../lib/debounce";
 import { api } from "../lib/api";
 import { tildePath } from "../lib/format";
 import { setParams, useLocation } from "../lib/router";
@@ -54,6 +56,26 @@ export function SessionsPage() {
     });
   }, [pageData]);
 
+  /**
+   * 실시간 갱신.
+   *
+   * 첫 페이지(`offset === 0`)만 조용히 다시 읽는다. 더 보기로 여러 페이지를 이어
+   * 붙여 놓은 상태에서 재조회하면 읽던 목록이 통째로 갈리므로, 그때는 배너만 띄우고
+   * 사용자가 누를 때 이동한다.
+   */
+  const [staleBanner, setStaleBanner] = useState(false);
+  const onLive = useDebouncedCallback(() => {
+    if (offset === 0) sessions.reload();
+    else setStaleBanner(true);
+  }, 3000);
+  useLiveChange(onLive);
+
+  const jumpToLatest = useCallback(() => {
+    setStaleBanner(false);
+    setOffset(0);
+    setItems([]);
+  }, []);
+
   const selectProject = useCallback((id: string) => setParams({ projectId: id, q: null }), []);
   const resetFilters = useCallback(() => setParams({ projectId: null, q: null }), []);
 
@@ -64,6 +86,12 @@ export function SessionsPage() {
 
   return (
     <div className="sessions">
+      {staleBanner ? (
+        <div className="live-banner">
+          <span>새 세션 활동이 있습니다.</span>
+          <Button onClick={jumpToLatest}>최신으로</Button>
+        </div>
+      ) : null}
       <div className="sessions__bar">
         <input
           type="search"

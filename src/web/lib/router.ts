@@ -79,10 +79,13 @@ export function setParam(name: string, value: string | null, options: { replace?
 export function Link({
   to,
   className,
+  title,
   children,
 }: {
   to: string;
   className?: string;
+  /** 앵커의 툴팁. 통계 타일처럼 요약 숫자 뒤의 분해를 hover 로 보여줄 때 쓴다. */
+  title?: string;
   children: ReactNode;
 }) {
   const onClick = useCallback(
@@ -94,5 +97,5 @@ export function Link({
     },
     [to],
   );
-  return createElement("a", { href: to, className, onClick }, children);
+  return createElement("a", { href: to, className, title, onClick }, children);
 }

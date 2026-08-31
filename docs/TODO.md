@@ -109,3 +109,5 @@
 2026-08-31T13:44:09Z NOTE T-021 "실측 정정: PROTOCOL 누락 시 claude --debug 에도 흔적이 남지 않는다. 완전히 조용하다. 유일한 진단은 status.collecting=false 이고, 그래서 status 에 port 를 넣었다"
 2026-08-31T13:44:10Z NOTE T-021 "OTLP 정수 값이 asInt 가 아니라 asDouble 로 온다(897 도 asDouble). aggregationTemporality=1(DELTA) 확인. 손으로 만든 픽스처로는 못 잡을 차이라 실측 페이로드를 test/fixtures 에 고정했다 — 식별 정보는 더미로 치환"
 2026-08-31T13:44:11Z DONE T-021 "POST /v1/metrics·/v1/logs + bun:sqlite 저장소 + GET /api/telemetry/{status,tokens,cost,timeseries,latency}. 실제 claude 왕복 검증: query_source main 22969 vs auxiliary 907(오버헤드 3.8%), cost $0.0205, 지연 백분위. 깨진 페이로드 10종 전부 200. 테스트 22종"
+2026-08-31T21:56:00Z NOTE T-013 "서버 측 왕복 재검증: 저장 후 즉시 재저장 200(409 아님), 외부 변경 후 저장 409+currentVersion, 비허용 확장자 403, editing.ts 순수 로직 8종 통과"
+2026-08-31T21:56:01Z DONE T-013 "미리보기·원문·편집 3탭 에디터. 브라우저 전용 항목(IME 조합, Cmd+Z, 초안 복원 배너, beforeunload, 파일 전환 확인, 5000줄 타이핑 성능)은 이 환경에 브라우저가 없어 끝까지 미검증 — 실사용 시 확인 필요"

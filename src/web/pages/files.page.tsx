@@ -9,6 +9,8 @@ import { bytes } from "../lib/format";
 import { navigate, useLocation } from "../lib/router";
 import { useEditorFile } from "../hooks/use-editor-file";
 import { useQuery } from "../hooks/use-query";
+import { useLiveChange } from "../hooks/use-live";
+import { useDebouncedCallback } from "../lib/debounce";
 
 export function FilesPage() {
   const { search } = useLocation();
@@ -159,6 +161,28 @@ function FileView({
     dirtyRef.current = dirty;
   }, [dirty, dirtyRef]);
 
+  /**
+   * 실시간 갱신 — 절대 규칙.
+   *
+   * **편집 중(dirty)이면 어떤 경우에도 다시 읽지 않는다.** 배너만 띄우고, 다시 읽을지는
+   * 사용자가 정한다. 자동으로 읽으면 타이핑한 내용이 사라진다.
+   *
+   * dirty 가 아니어도 `reload()` 는 서버가 준 version 이 실제로 달라졌을 때만 draft 를
+   * 갈아끼운다(use-editor-file). 같으면 아무 일도 없으므로 커서와 포커스가 유지된다.
+   *
+   * 그리고 `/api/events` 는 `~/.claude` 만 감시한다. 워크스페이스 파일 변경은 이
+   * 이벤트로 오지 않으므로, 이 화면의 실시간성은 부수적이다.
+   */
+  const [maybeStale, setMaybeStale] = useState(false);
+  const onLive = useDebouncedCallback(() => {
+    if (dirtyRef.current) {
+      setMaybeStale(true);
+      return;
+    }
+    void editor.reload();
+  }, 2000);
+  useLiveChange(onLive, Boolean(path));
+
   if (!path) return <EmptyState title="파일을 선택하세요" hint="왼쪽 트리에서 파일을 고르면 내용이 보입니다." />;
   if (editor.loadError) {
     const status = editor.loadError instanceof ApiError ? editor.loadError.status : 0;
@@ -187,6 +211,19 @@ function FileView({
 
   return (
     <div className="viewer">
+      {maybeStale ? (
+        <div className="live-banner">
+          <span>디스크에서 변경되었을 수 있습니다. 편집 중이라 자동으로 읽지 않았습니다.</span>
+          <Button
+            onClick={() => {
+              setMaybeStale(false);
+              void editor.reload();
+            }}
+          >
+            다시 읽기
+          </Button>
+        </div>
+      ) : null}
       <div className="viewer__bar">
         <span className="viewer__path">
           {file.path}

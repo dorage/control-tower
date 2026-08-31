@@ -36,6 +36,8 @@ export interface TranscriptRecord {
   message?: RawMessage;
   content?: unknown;
   aiTitle?: string;
+  /** 스킬이 활성인 동안 만들어진 레코드에 붙는 스킬 이름. 호출 레코드 자체에는 없다. */
+  attributionSkill?: string;
   agentName?: string;
   summary?: string;
   mode?: string;
@@ -99,6 +101,8 @@ export interface SessionSummary {
     errors: number;
   };
   toolUsage: Array<{ name: string; count: number }>;
+  /** 이 세션에서 쓰인 스킬과 호출 횟수. 호출 순서를 잃지 않으려면 `firstUsedAt` 을 본다. */
+  skillUsage: Array<{ name: string; count: number; firstUsedAt: string | null }>;
   models: string[];
   usage: TokenUsage;
   gitBranch: string | null;
@@ -158,6 +162,8 @@ export interface Stats {
   usage: TokenUsage;
   models: Array<{ name: string; count: number }>;
   tools: Array<{ name: string; count: number }>;
+  /** 스킬별 호출 수와 그 스킬을 쓴 세션 수. 상위 12개. */
+  skills: Array<{ name: string; count: number; sessions: number }>;
   activityLast24h: number;
   updatedAt: string;
 }

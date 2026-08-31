@@ -46,8 +46,9 @@ control-tower/
     │   ├── live.service.ts         ✅
     │   ├── project.service.ts      ✅
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
-    │   ├── session.service.test.ts  ✅        집계·타임라인 옵션·캐시 무효화
-    │   ├── stats.service.ts        ✅
+    │   ├── session.service.test.ts  ✅        집계·타임라인 옵션·캐시 무효화·스킬 추출
+    │   ├── stats.service.ts        ✅        전체 집계. 툴·스킬 상위 12개
+    │   ├── stats.service.test.ts    ✅        스킬 호출 수 ↔ 세션 수 집계 테스트
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독 + 세션별 변경 델타
     │   ├── watch.service.test.ts    ✅        diffState · 델타 통합 테스트
     │   ├── telemetry.service.ts    ✅        OTLP 파싱 · 카디널리티 가드 · 보존 스케줄 · 조회

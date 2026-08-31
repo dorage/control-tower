@@ -135,3 +135,10 @@
 2026-08-31T22:16:02Z NOTE T-020 "감사에서 발견: 서비스와 웹 클라이언트에 같은 이름의 TimelineOptions 가 있고 필드명이 다르다(includeEvents/includeSidechain vs events/sidechain). 이름을 통일하지 않고 CONVENTIONS §8 에 이유와 주의를 명시했다 — 웹은 HTTP 쿼리 이름을, 서비스는 도메인을 따르는 것이 각각 옳다"
 2026-08-31T22:16:03Z NOTE T-020 "node:fs 규칙이 §1 에 이미 있는데 §2 에 중복으로 쓸 뻔했다. 한 곳으로 통합하고 실제 사용처(db/*.db.ts, scripts, test 포함)에 맞게 확장"
 2026-08-31T22:16:04Z DONE T-020 "scripts/check-docs.ts + check/check:docs 스크립트 + 루트 README 재작성. 엔드포인트 18종 실호출 감사, 상태 코드 규약 확인, CONVENTIONS 위반 grep 9종 전부 통과. bun run check 통과"
+2026-08-31T22:34:00Z ADD T-023 P2 web-session "세션별·전체 스킬 사용 집계와 표시" docs/todos/T-023-skill-usage.md
+2026-08-31T22:34:01Z START T-023
+2026-08-31T22:34:02Z NOTE T-023 "실측: Skill 툴 호출 레코드 자체에는 attributionSkill 이 없고 그 뒤 레코드들에 붙는다. 붙는 구간도 연속이 아니라 사이의 tool_result 레코드에는 없다. 그래서 마지막으로 본 스킬 이름과 다를 때만 새 호출로 센다"
+2026-08-31T22:34:03Z NOTE T-023 "사용자가 /skill-name 을 직접 치면 Skill 툴 호출이 아예 없다(attributionSkill 만 남는다). 툴 호출만 세면 슬래시 명령으로 쓴 스킬이 통째로 사라진다"
+2026-08-31T22:34:04Z NOTE T-023 "호출 수와 세션 수를 함께 준다. 한 세션이 12번 몰아 쓴 것과 12개 세션이 각각 쓴 것은 다른 이야기인데 호출 수만 보면 구별되지 않는다"
+2026-08-31T22:34:05Z NOTE T-023 "텔레메트리에 이미 skill.name 차원이 있지만(T-021) 그것은 선택 기능이다. 켜지 않은 사람도 보이도록 트랜스크립트에서 뽑았다"
+2026-08-31T22:34:06Z DONE T-023 "SessionSummary.skillUsage + Stats.skills + 대시보드 자주 쓴 스킬 카드 + 세션 카드·상세 스킬 칩. 실데이터 확인: update-config 2회/2세션. 테스트 9종 추가(146 pass), bun run check 통과. 한계는 ENDPOINTS 에 명시 — 같은 스킬을 슬래시 명령으로 연달아 부르면 한 번으로 접힌다"

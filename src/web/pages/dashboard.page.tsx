@@ -82,6 +82,18 @@ export function DashboardPage() {
     [stats.data],
   );
 
+  // 호출 수만 보면 한 세션이 몰아 쓴 스킬과 여러 세션이 고르게 쓴 스킬을 구별할 수 없다.
+  const skillRows = useMemo(
+    () =>
+      (stats.data?.skills ?? []).map((skill) => ({
+        key: skill.name,
+        value: skill.count,
+        display: `${skill.count}회`,
+        note: `${skill.sessions}세션`,
+      })),
+    [stats.data],
+  );
+
   if (stats.error) {
     return (
       <div className="dashboard">
@@ -221,6 +233,15 @@ export function DashboardPage() {
 
         <Card title="자주 쓴 툴" state={stats}>
           {() => <BarBreakdown rows={toolRows} emptyHint="툴 사용 기록이 없습니다." />}
+        </Card>
+
+        <Card title="자주 쓴 스킬" state={stats}>
+          {() => (
+            <BarBreakdown
+              rows={skillRows}
+              emptyHint="스킬 사용 기록이 없습니다. 스킬을 쓴 세션이 없거나 아직 트랜스크립트에 남지 않았습니다."
+            />
+          )}
         </Card>
 
         <Card title="최근 프롬프트" state={history}>

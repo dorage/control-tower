@@ -53,6 +53,7 @@
 | `usage` | TokenUsage | 토큰 합계 |
 | `models` | `{name,count}[]` | 모델별 세션 수 |
 | `tools` | `{name,count}[]` | 상위 12개 툴 사용 수 |
+| `skills` | `{name,count,sessions}[]` | 상위 12개 스킬. `count`=호출 수, `sessions`=그 스킬을 쓴 세션 수 |
 | `activityLast24h` | number | 24시간 내 활동한 세션 수 |
 | `updatedAt` | ISO string | 응답 생성 시각 |
 
@@ -79,6 +80,16 @@
 ### `GET /api/sessions/:id` ✅
 
 `SessionSummary` 단건. 없으면 404.
+
+`skillUsage`는 `{name, count, firstUsedAt}[]`이며 **처음 쓴 순서**다(툴 사용량과 달리 많이 쓴 순서가
+아니다). 트랜스크립트에 "스킬을 몇 번 썼다"는 필드가 없어 두 신호를 합친 **휴리스틱**이다.
+
+- `Skill` 툴 호출 — 항상 한 번으로 센다.
+- `attributionSkill` — 스킬이 활성인 동안 만들어진 레코드에 붙는다. 사용자가 `/skill-name`을
+  직접 타이핑하면 툴 호출이 없어 이것만 남는다.
+
+호출 레코드 자체에는 `attributionSkill`이 없고 그 뒤 레코드들에 붙으므로, 직전에 본 스킬 이름과
+다를 때만 새 호출로 센다. 그래서 **같은 스킬을 슬래시 명령으로 연달아 부르면 한 번으로 접힌다.**
 
 ### `GET /api/sessions/:id/timeline` ✅
 

@@ -31,6 +31,26 @@ const EVENT_TYPES = new Set([
   "auto_mode",
 ]);
 
+/**
+ * 스킬 호출을 세는 두 신호. 트랜스크립트에 "스킬을 몇 번 썼다" 는 필드는 없다.
+ *
+ * 1. `Skill` 툴 호출 — 모델이 스스로 스킬을 불렀다. 항상 한 번으로 센다.
+ * 2. `attributionSkill` — 스킬이 활성인 동안 만들어진 레코드에 붙는다. 사용자가
+ *    `/skill-name` 을 직접 타이핑하면 툴 호출이 아예 없어서 이것만 남는다(실측 확인).
+ *
+ * 호출 레코드 자체에는 `attributionSkill` 이 없고, 그 뒤 레코드들에 붙는다. 그래서
+ * 마지막으로 본 스킬 이름을 들고 다니며 그와 다른 이름이 나올 때만 새 호출로 센다 —
+ * 툴 결과처럼 attribution 이 비어 있는 레코드가 사이에 끼어도 한 번의 실행으로 묶인다.
+ * 대신 같은 스킬을 슬래시 명령으로 연달아 부르면 한 번으로 접힌다. 휴리스틱이다.
+ */
+function skillNameOf(raw: Record<string, unknown>): string | null {
+  if (raw.type !== "tool_use" || raw.name !== "Skill") return null;
+  const input = raw.input;
+  if (!input || typeof input !== "object") return null;
+  const skill = (input as { skill?: unknown }).skill;
+  return typeof skill === "string" && skill ? skill : null;
+}
+
 export function emptyUsage(): TokenUsage {
   return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, thinking: 0, total: 0 };
 }
@@ -179,6 +199,9 @@ function buildSummary(ref: TranscriptFileRef, records: TranscriptRecord[]): Sess
   const usage = emptyUsage();
   const models = new Set<string>();
   const tools = new Map<string, number>();
+  const skills = new Map<string, { count: number; firstUsedAt: string | null }>();
+  // 마지막으로 본 스킬 이름. 같은 이름이 이어지면 한 번의 실행으로 본다.
+  let lastSkill: string | null = null;
 
   let title: string | null = null;
   let firstPrompt: string | null = null;
@@ -200,7 +223,19 @@ function buildSummary(ref: TranscriptFileRef, records: TranscriptRecord[]): Sess
     errors: 0,
   };
 
+  const countSkill = (name: string, at: string | null) => {
+    const entry = skills.get(name);
+    if (entry) entry.count += 1;
+    else skills.set(name, { count: 1, firstUsedAt: at });
+    lastSkill = name;
+  };
+
   for (const record of records) {
+    const at = typeof record.timestamp === "string" ? record.timestamp : null;
+    if (typeof record.attributionSkill === "string" && record.attributionSkill) {
+      if (record.attributionSkill !== lastSkill) countSkill(record.attributionSkill, at);
+    }
+
     if (typeof record.timestamp === "string") {
       firstTimestamp ??= record.timestamp;
       lastTimestamp = record.timestamp;
@@ -233,6 +268,8 @@ function buildSummary(ref: TranscriptFileRef, records: TranscriptRecord[]): Sess
           counts.toolUses += 1;
           const name = typeof raw.name === "string" ? raw.name : "unknown";
           tools.set(name, (tools.get(name) ?? 0) + 1);
+          const skill = skillNameOf(raw);
+          if (skill) countSkill(skill, at);
         }
       }
     }
@@ -262,6 +299,10 @@ function buildSummary(ref: TranscriptFileRef, records: TranscriptRecord[]): Sess
     toolUsage: [...tools.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count),
+    // 처음 쓴 순서로 둔다. 스킬은 개수가 적어서, 많이 쓴 순서보다 "무엇을 거쳐 왔나" 가 읽힌다.
+    skillUsage: [...skills.entries()]
+      .map(([name, entry]) => ({ name, count: entry.count, firstUsedAt: entry.firstUsedAt }))
+      .sort((a, b) => (a.firstUsedAt ?? "").localeCompare(b.firstUsedAt ?? "")),
     models: [...models],
     usage,
     gitBranch,

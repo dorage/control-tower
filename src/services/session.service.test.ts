@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
-import { makeClaudeHome, sampleSession, at, type FakeClaudeHome } from "../../test/helpers";
+import { makeClaudeHome, sampleSession, skillSession, at, type FakeClaudeHome } from "../../test/helpers";
 import { getSession, getTimeline, listSessions } from "./session.service";
 
 /**
@@ -9,6 +9,7 @@ import { getSession, getTimeline, listSessions } from "./session.service";
  */
 const PROJECT = "-home-u-my-app";
 const SESSION = "11111111-2222-4333-8444-555555555555";
+const SKILL_SESSION = "66666666-7777-4888-8999-aaaaaaaaaaaa";
 
 let home: FakeClaudeHome;
 
@@ -16,6 +17,7 @@ beforeAll(async () => {
   home = await makeClaudeHome();
   process.env.CLAUDE_HOME = home.dir;
   await home.addTranscript(PROJECT, SESSION, sampleSession(SESSION));
+  await home.addTranscript(PROJECT, SKILL_SESSION, skillSession(SKILL_SESSION));
   // 깨진 줄이 있어도 나머지가 살아야 한다.
   await home.appendRaw(PROJECT, SESSION, '{"type":"user","message":{"role"\n');
 });
@@ -96,6 +98,36 @@ test("없는 세션은 null 이다", async () => {
   expect(await getSession("no-such-session")).toBe(null);
 });
 
+// ---------------------------------------------------------------- 스킬 (T-023)
+
+test("스킬을 쓰지 않은 세션의 skillUsage 는 빈 배열이다", async () => {
+  const summary = await getSession(SESSION);
+  expect(summary!.skillUsage).toEqual([]);
+});
+
+test("Skill 툴 호출 뒤 attribution 이 이어져도 한 번의 호출이다", async () => {
+  const summary = await getSession(SKILL_SESSION);
+  const config = summary!.skillUsage.find((skill) => skill.name === "update-config");
+  // s-a1(툴) + s-a6(툴) = 2. 사이의 attribution 레코드 두 개는 같은 실행이라 세지 않는다.
+  expect(config).toEqual({ name: "update-config", count: 2, firstUsedAt: at(1) });
+});
+
+test("툴 호출 없이 attribution 만 있는 스킬도 잡는다", async () => {
+  const summary = await getSession(SKILL_SESSION);
+  const review = summary!.skillUsage.find((skill) => skill.name === "code-review");
+  expect(review).toEqual({ name: "code-review", count: 1, firstUsedAt: at(6) });
+});
+
+test("skillUsage 는 처음 쓴 순서다", async () => {
+  const summary = await getSession(SKILL_SESSION);
+  expect(summary!.skillUsage.map((skill) => skill.name)).toEqual(["update-config", "code-review"]);
+});
+
+test("Skill 툴 호출도 toolUsage 에 그대로 남는다", async () => {
+  const summary = await getSession(SKILL_SESSION);
+  expect(summary!.toolUsage).toEqual([{ name: "Skill", count: 2 }]);
+});
+
 // ---------------------------------------------------------------- 타임라인
 
 test("기본 타임라인에는 이벤트 엔트리가 없다", async () => {
@@ -135,10 +167,11 @@ test("없는 세션의 타임라인은 null 이다", async () => {
 
 // ---------------------------------------------------------------- 목록과 캐시
 
-test("listSessions 가 세션을 돌려준다", async () => {
+test("listSessions 가 세션을 lastActivityAt 내림차순으로 돌려준다", async () => {
   const result = await listSessions();
-  expect(result.total).toBe(1);
-  expect(result.sessions[0]!.id).toBe(SESSION);
+  expect(result.total).toBe(2);
+  // sampleSession 은 at(12) 까지, skillSession 은 at(8) 까지 간다.
+  expect(result.sessions.map((session) => session.id)).toEqual([SESSION, SKILL_SESSION]);
 });
 
 test("같은 세션을 두 번 요약해도 결과가 같다 (캐시)", async () => {

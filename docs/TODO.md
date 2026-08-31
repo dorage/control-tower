@@ -124,3 +124,14 @@
 2026-08-31T22:10:10Z NOTE T-022 "차트 라이브러리 없이 CSS 폭(막대)과 인라인 SVG rect(누적 시계열)로 그렸다. 색은 인덱스 기반 6칸 고정 — 무작위면 새로고침마다 바뀌어 읽을 수 없다"
 2026-08-31T22:10:11Z NOTE T-022 "미수집 상태를 에러가 아니라 정상적인 첫 상태로 다룬다. settings.json 은 사용자 소유라 대신 고치지 않고 복사용으로만 보여주며, 포트는 status.port 를 쓴다"
 2026-08-31T22:10:12Z DONE T-022 "/telemetry 화면. 6개 소스 병렬·카드 단위 에러 격리. 실데이터 확인: query_source main 22969 vs auxiliary 907, degraded 승격 동작"
+2026-08-31T22:13:00Z START T-019
+2026-08-31T22:13:01Z NOTE T-019 "작업 문서의 '설정 뒤 동적 import' 지침은 더 이상 필요 없다. T-004 에서 config.claudeDir/paths 를 getter 로 바꿔서 정적 import 로도 임시 CLAUDE_HOME 이 먹는다"
+2026-08-31T22:13:02Z NOTE T-019 "테스트가 두 번 틀렸다. ai-title 레코드의 필드는 title 이 아니라 aiTitle 이고(실제 트랜스크립트로 확인), getTimeline 의 옵션은 events/sidechain 이 아니라 includeEvents/includeSidechain 이다(그 이름은 라우트 쿼리 파라미터다). 구현이 아니라 테스트를 고쳤다"
+2026-08-31T22:13:03Z NOTE T-019 "격리 검증: bun test 중 바뀐 유일한 트랜스크립트는 다른 worktree 에서 동시 실행 중인 세션(bb66677d)의 것이었다. 대조군(테스트 없이 동일 시간 대기)으로 가려냈다. 테스트는 임시 홈만 쓴다"
+2026-08-31T22:13:04Z NOTE T-019 "format.ts 의 % Lines 0.00 은 커버리지 없음이 아니라 전부 export 순수 함수라 최상단 실행 줄이 없어 그렇게 잡히는 것이다(% Funcs 90). fs.service.ts 59.76% 는 실제로 낮고, 목록·트리 경로가 비어 있다 — CONVENTIONS §11.1 에 기록"
+2026-08-31T22:13:05Z DONE T-019 "text.test.ts 16종·session.service.test.ts 19종·test/helpers.ts. 137 pass 0 fail, 3.2초, 임시 디렉터리 잔여 0, 2회 연속 동일. package.json test/check 스크립트"
+2026-08-31T22:16:00Z START T-020
+2026-08-31T22:16:01Z NOTE T-020 "check-docs.ts 가 첫 실행에서 실전 누락을 하나 잡았다 — STRUCTURE 트리에 text.test.ts 를 넣는 치환이 트리 문자(└ vs ├) 때문에 조용히 실패해 있었다. 스크립트를 만든 값을 즉시 했다"
+2026-08-31T22:16:02Z NOTE T-020 "감사에서 발견: 서비스와 웹 클라이언트에 같은 이름의 TimelineOptions 가 있고 필드명이 다르다(includeEvents/includeSidechain vs events/sidechain). 이름을 통일하지 않고 CONVENTIONS §8 에 이유와 주의를 명시했다 — 웹은 HTTP 쿼리 이름을, 서비스는 도메인을 따르는 것이 각각 옳다"
+2026-08-31T22:16:03Z NOTE T-020 "node:fs 규칙이 §1 에 이미 있는데 §2 에 중복으로 쓸 뻔했다. 한 곳으로 통합하고 실제 사용처(db/*.db.ts, scripts, test 포함)에 맞게 확장"
+2026-08-31T22:16:04Z DONE T-020 "scripts/check-docs.ts + check/check:docs 스크립트 + 루트 README 재작성. 엔드포인트 18종 실호출 감사, 상태 코드 규약 확인, CONVENTIONS 위반 grep 9종 전부 통과. bun run check 통과"

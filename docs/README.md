@@ -25,7 +25,7 @@ Bun(`Bun.serve`) 하나로 API와 프론트엔드를 함께 서빙한다.
 3. `TODO.md`에 `START` 줄을 append 한다.
 4. 구현한다.
 5. 수용 기준과 검증 명령을 모두 통과시킨다.
-6. **CONVENTIONS / STRUCTURE / ENDPOINTS 세 문서를 갱신한다.** (변경 없음이면 "변경 없음"을 확인만 하고 넘어간다)
+6. **CONVENTIONS / STRUCTURE / ENDPOINTS 세 문서를 갱신하고 `bun run check` 를 통과시킨다.** (변경 없음이면 "변경 없음"을 확인만 하고 넘어간다)
 7. `TODO.md`에 `DONE` 줄을 append 한다.
 
 ## 실행
@@ -36,7 +36,8 @@ bun run dev        # 실행 (--hot)
 bun run start      # 실행 (--hot). dev 와 같다
 bun run start:prod # 핫 리로드 없이 실행 (NODE_ENV=production)
 bun test           # 테스트
-bunx tsc --noEmit  # 타입 체크
+bun run check      # 타입 체크 + 테스트 (작업 완료 전 이걸 통과시킨다)
+bunx tsc --noEmit  # 타입 체크만
 ```
 
 `--hot`은 CLI 플래그로만 켤 수 있다(`bunfig.toml`에 스위치가 없다). 그래서 기본 실행 스크립트에 박아 둔다.

@@ -7,7 +7,9 @@
 ```
 control-tower/
 ├── index.ts                        ✅        서버 진입점 (Bun.serve 기동)
-├── package.json                    ✅        scripts: dev / start(둘 다 --hot) / start:prod / typecheck
+├── package.json                    ✅        scripts: dev / start(둘 다 --hot) / start:prod / typecheck / test / check / check:docs
+├── scripts/
+│   └── check-docs.ts               ✅        문서-코드 일치 검사 (휴리스틱, 종료코드 0/1)
 ├── tsconfig.json                   ✅        lib: ESNext + DOM (브라우저 코드용)
 ├── CLAUDE.md                       ✅        Bun 사용 규약 (에이전트용)
 ├── README.md                       ✅
@@ -19,6 +21,7 @@ control-tower/
 │   ├── ENDPOINTS.md                ✅
 │   └── todos/T-0xx-*.md            ✅        작업 단위별 자기완결 명세
 ├── test/
+│   ├── helpers.ts                  ✅        임시 CLAUDE_HOME 구성 · 합성 트랜스크립트
 │   └── fixtures/otlp-*.json        ✅        실측 OTLP 페이로드 (식별 정보는 더미로 치환)
 └── src/
     ├── config.ts                   ✅        환경변수 → 설정 객체, 경로 상수
@@ -30,7 +33,8 @@ control-tower/
     ├── lib/                                  도메인 지식 없는 순수 유틸
     │   ├── http.ts                 ✅        응답 헬퍼 · 쿼리 파싱 · HttpError · withRoute
     │   ├── http.test.ts             ✅
-    │   └── text.ts                 ✅        stripAnsi/truncate/parseJsonl/decodeProjectId
+    │   ├── text.ts                 ✅        stripAnsi/truncate/parseJsonl/decodeProjectId
+    │   └── text.test.ts             ✅        ANSI 제거·JSONL 방어 파싱·경로 복원 한계
     ├── repositories/                         디스크 읽기·쓰기
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
@@ -42,6 +46,7 @@ control-tower/
     │   ├── live.service.ts         ✅
     │   ├── project.service.ts      ✅
     │   ├── session.service.ts      ✅        요약·타임라인 생성, 요약 캐시
+    │   ├── session.service.test.ts  ✅        집계·타임라인 옵션·캐시 무효화
     │   ├── stats.service.ts        ✅
     │   ├── watch.service.ts        ✅        폴링 기반 변경 감지 + 구독 + 세션별 변경 델타
     │   ├── watch.service.test.ts    ✅        diffState · 델타 통합 테스트

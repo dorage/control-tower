@@ -7,7 +7,10 @@
     "dev": "bun --hot index.ts",
     "start": "bun --hot index.ts",
     "start:prod": "NODE_ENV=production bun index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "tsc --noEmit && bun test && bun scripts/check-docs.ts",
+    "check:docs": "bun scripts/check-docs.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

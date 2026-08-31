@@ -1,39 +1,70 @@
 # control-tower
 
-웹으로 보는 로컬 관제탑. Bun(`Bun.serve`) 하나로 API와 프론트엔드를 함께 서빙한다.
+로컬 개발 환경을 웹으로 들여다보는 관제탑. Bun(`Bun.serve`) 하나로 API와 프론트엔드를 함께 서빙한다.
+
+- **파일 탐색기** — 설정한 워크스페이스 루트를 훑고 텍스트 파일을 연다.
+- **마크다운 편집** — `.md` 를 미리보기·원문·편집 3탭으로 다루고, 충돌을 감지해 저장한다.
+- **세션 뷰** — `~/.claude` 에 쌓인 Claude Code 세션을 목록과 대화 타임라인으로 읽는다.
+- **대시보드** — 지금 무슨 일이 벌어지는지 한 화면에서 본다.
+- **실시간 반영** — 세션이 진행되면 화면이 스스로 따라간다 (SSE).
+- **텔레메트리** — Claude Code 의 OpenTelemetry 를 직접 받아 토큰·비용 분포를 본다 (선택).
+
+의존성은 React 뿐이다. 서버 프레임워크도, SQLite 드라이버도, 차트 라이브러리도 쓰지 않는다.
 
 ## 실행
 
 ```bash
 bun install
-bun run dev        # 실행 (--hot). 기본 http://localhost:4317
-bun run start      # 실행 (--hot). dev 와 같다
-bun run start:prod # 핫 리로드 없이 실행
-bun test         # 테스트
-bunx tsc --noEmit  # 타입 체크
+bun run dev          # http://localhost:4317 (--hot)
+bun run start:prod   # 핫 리로드 없이
+
+bun run check        # 타입 체크 + 테스트
+bun run check:docs   # 문서-코드 일치 검사
 ```
 
-탐색할 디렉터리는 `WORKSPACE_ROOTS`로 지정한다(`:` 구분, 기본 `$HOME/workspace`).
+탐색할 디렉터리는 `WORKSPACE_ROOTS` 로 지정한다.
 
 ```bash
 WORKSPACE_ROOTS=/home/me/workspace:/home/me/notes bun run dev
 ```
 
-## 현재 상태
+## 화면
 
-파일 탐색기와 세션 뷰가 동작한다.
+| 경로 | 내용 |
+| --- | --- |
+| `/` | 대시보드 — 통계 타일, 최근 세션·프로젝트·자주 쓴 툴·최근 프롬프트 |
+| `/files` | 파일 탐색기와 마크다운 에디터 |
+| `/sessions` | 세션 목록. 검색·프로젝트 필터가 URL 에 남아 그대로 공유된다 |
+| `/sessions/:id` | 대화 타임라인. 사고 과정·툴 입출력·시스템 이벤트·서브에이전트를 각각 토글 |
+| `/telemetry` | 토큰·비용 분포와 요청 지연 (텔레메트리를 켠 경우) |
 
-- `/files` — 트리를 탐색하고 텍스트 파일을 연다. `.md`는 원문과 렌더된 미리보기를 오간다.
-- `/sessions` — `~/.claude`에 쌓인 세션을 최신순으로 훑고, 검색·프로젝트 필터로 좁힌다.
-  필터는 URL에 남으므로 그대로 공유할 수 있다.
-- `/sessions/:id` — 한 세션의 대화를 처음부터 읽는다. 사고 과정·툴 입출력·시스템 이벤트·
-  서브에이전트를 각각 켜고 끌 수 있고, 긴 세션은 200개씩 넘긴다.
+## 설정
 
-관찰 대상 디렉터리는 `CLAUDE_HOME`으로 바꾼다(기본 `$HOME/.claude`).
+주요 환경변수만 적는다. 전체 목록은 [docs/STRUCTURE.md](./docs/STRUCTURE.md) 에 있다.
 
-편집·저장(T-008/T-013), 대시보드(T-017), 실시간 반영(T-004/T-018)은 아직이다.
+| 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `PORT` | `4317` | 리슨 포트 |
+| `CLAUDE_HOME` | `$HOME/.claude` | 관찰 대상 Claude 데이터 디렉터리 |
+| `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분 |
+| `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 |
+| `TELEMETRY_ENABLED` | `1` | `0` 이면 OTLP 수신을 끈다 |
+
+## 텔레메트리 (선택)
+
+켜면 트랜스크립트로는 알 수 없는 것이 보인다 — 실제 달러 비용, 그리고 토큰 중 얼마가
+실제 작업(`main`)이고 얼마가 오버헤드(세션 제목 생성 등)인지.
+
+설정 방법과 두 가지 함정은 [docs/README.md](./docs/README.md#텔레메트리-수집-선택) 에 있다.
+특히 `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` 을 빠뜨리면 **완전히 조용히** 실패한다.
 
 ## 문서
 
-[docs/README.md](./docs/README.md)에서 시작한다. 작업 로그는 [docs/TODO.md](./docs/TODO.md),
-명세는 [docs/todos/](./docs/todos/)에 있다.
+| 문서 | 내용 |
+| --- | --- |
+| [docs/README.md](./docs/README.md) | 문서 지도 · 작업 절차 · 실행과 설정 |
+| [docs/CONVENTIONS.md](./docs/CONVENTIONS.md) | 코드 컨벤션 |
+| [docs/STRUCTURE.md](./docs/STRUCTURE.md) | 프로젝트 구조와 계층 규칙 |
+| [docs/ENDPOINTS.md](./docs/ENDPOINTS.md) | HTTP 엔드포인트 명세 |
+| [docs/TODO.md](./docs/TODO.md) | 작업 로그 (추가 전용) |
+| [docs/todos/](./docs/todos/) | 작업 단위별 자기완결 명세 |

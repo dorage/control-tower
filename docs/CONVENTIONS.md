@@ -8,7 +8,7 @@
 - 실행 `bun <file>`, 설치 `bun install`, 스크립트 `bun run <script>`, 실행기 `bunx`.
 - 서버는 항상 핫 리로드(`bun --hot`)로 띄운다. `dev`/`start` 스크립트 둘 다에 플래그가 박혀 있다. 핫 리로드가 곤란한 경우에만 `start:prod`를 쓴다.
 - 서버는 `Bun.serve()`. Express 등 HTTP 프레임워크를 추가하지 않는다.
-- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 `node:fs/promises`를 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat, `fs.service.ts`의 `realpath`.
+- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat·원자적 `rename`, `fs.service.ts`의 `realpath`, `src/db/*.db.ts`의 부모 디렉터리 생성(`mkdirSync`), 그리고 `scripts/*`·`test/*`·`*.test.ts`의 동기 읽기와 임시 디렉터리 조작.
 - 환경변수는 `Bun.env`로 읽는다. `dotenv`를 쓰지 않는다(Bun이 `.env`를 자동 로드).
 - 번들러/개발서버는 Bun의 HTML import. `vite`/`webpack`/`esbuild`를 쓰지 않는다.
 - 테스트는 `bun test` (`import { test, expect } from "bun:test"`).
@@ -99,6 +99,7 @@ route  →  service  →  repository  →  disk
 - `LOG_REQUESTS=1`일 때만 `withRoute`가 요청 한 줄 로그를 남긴다. 기본은 끔.
 - **이 절의 규약은 `/api/*` 에만 적용된다.** 외부 규격을 그대로 받아야 하는 경로(`/v1/metrics`, `/v1/logs` — OTLP)는 규격이 정한 응답을 돌려주며, 예외인 이유를 해당 라우트 파일 최상단 주석에 적는다.
 - 새 라우트 모듈은 `src/routes/index.ts`에서만 조합한다. `Bun.serve`의 `routes`는 구체적 경로를 와일드카드보다 먼저 매칭하지만, **정의하지 않은 메서드는 405 가 아니라 `"/*"` 폴백으로 새는 경우가 있다.** 외부에서 열어볼 수 있는 경로라면 사용하지 않는 메서드에도 진단용 핸들러를 둔다.
+- **웹 클라이언트의 옵션 이름은 HTTP 쿼리 이름을, 서비스의 옵션 이름은 도메인을 따른다.** 그래서 `TimelineOptions` 가 두 곳에 같은 이름으로 있고 필드가 다르다 — 서비스는 `includeEvents`/`includeSidechain`, 웹은 `events`/`sidechain`. 라우트가 변환한다. 서비스를 직접 호출하는 테스트를 쓸 때 헷갈리기 쉬우니 이름을 확인한다.
 - 자세한 규약은 [ENDPOINTS.md](./ENDPOINTS.md).
 
 ## 9. 보안
@@ -189,6 +190,32 @@ route  →  service  →  repository  →  disk
 - **`config.ts`의 값은 getter 로 둔다.** `bun test`는 모듈 레지스트리를 테스트 파일 간에 공유하므로, 모듈 최상단에서 `Bun.env`를 한 번만 읽으면 테스트가 환경변수를 바꿔도 반영되지 않는다. 동적 `import`로는 해결되지 않는다(다른 테스트 파일이 이미 평가했을 수 있다).
 - 외부 규격을 파싱하는 코드는 **실측 페이로드를 픽스처로 고정**한다. 손으로 만든 페이로드는 실제 형태와 어긋난다(예: OTLP 정수 값이 `asInt`가 아니라 `asDouble`로 온다).
 - 방어적 파서는 `null`/`undefined`/문자열/숫자/중첩 `null`을 넣어 **예외를 던지지 않는 것**을 테스트한다.
+- `bun run check` = `tsc --noEmit && bun test`. 작업을 끝낼 때 이것을 통과시킨다.
+
+### 11.1 커버리지
+
+수치 목표를 강제하지 않는다. 대신 **다음 파일에 테스트가 하나도 없으면 안 된다**는 규칙만 둔다.
+
+`src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
+
+`bun test --coverage` 기준 현황(2026-08-31):
+
+| 파일 | % Funcs | % Lines |
+| --- | --- | --- |
+| `src/lib/text.ts` | 100.00 | 100.00 |
+| `src/lib/http.ts` | 87.50 | 97.01 |
+| `src/services/watch.service.ts` | 92.31 | 97.89 |
+| `src/services/telemetry.service.ts` | 84.21 | 93.75 |
+| `src/services/session.service.ts` | 90.62 | 90.71 |
+| `src/repositories/telemetry.repository.ts` | 95.00 | 83.23 |
+| `src/web/lib/markdown.ts` | 100.00 | 96.72 |
+| `src/services/fs.service.ts` | 75.00 | 59.76 |
+| `src/web/lib/format.ts` | 90.00 | 0.00 |
+
+두 줄은 숫자만 보고 오해하기 쉬워 적어 둔다.
+
+- **`format.ts` 의 % Lines 0.00 은 커버리지가 없다는 뜻이 아니다.** 함수 커버리지는 90%다. 이 파일은 전부 export 된 순수 함수라 모듈 최상단에 실행되는 줄이 거의 없고, 계측이 그렇게 잡힌다. 테스트(`format.test.ts`)는 실제로 돌고 있다.
+- **`fs.service.ts` 의 59.76% 은 실제로 낮다.** 경로 탈출 방어와 저장 충돌은 촘촘히 덮여 있지만 디렉터리 목록·트리 구축 경로가 비어 있다. 보안에 직결되는 부분이 덮여 있어 지금은 감수하되, 이 파일을 손볼 때 함께 올린다.
 
 ## 12. 문서화 의무
 
@@ -198,6 +225,8 @@ route  →  service  →  repository  →  disk
 - `docs/STRUCTURE.md` — 파일/디렉터리가 늘거나 계층이 바뀌었는가
 - `docs/ENDPOINTS.md` — 엔드포인트가 추가/변경되었는가
 
-그리고 `docs/TODO.md`에 `DONE` 줄을 append 한다. `TODO.md`는 추가 전용이다 — 기존 줄을 고치지 않는다.
+그리고 `bun run check` (타입 체크 + 테스트 + 문서 일치 검사)를 통과시킨 뒤 `docs/TODO.md`에 `DONE` 줄을 append 한다. `TODO.md`는 추가 전용이다 — 기존 줄을 고치지 않는다.
+
+`bun run check:docs` 는 라우트↔ENDPOINTS, 파일↔STRUCTURE, 환경변수↔STRUCTURE, TODO 로그 문법·문서 존재·타임스탬프 단조성, `⬜` 표기와 `DONE` 의 모순, README 의 `bun init` 잔재를 본다. **휴리스틱이다** — 빠진 것이 없는지만 보고 문서가 옳은지는 보지 않으므로, 사람의 감사를 대체하지 않는다.
 
 `docs/TODO.md`를 도구로 파싱할 때는 **줄 전체가 `## LOG` 인 줄**을 찾는다(`line.trim() === "## LOG"`). 부분문자열로 찾으면 규칙 6번의 `` `## LOG` 아래만 로그다 `` 문구에 먼저 걸려 규칙 절 중간을 시작점으로 잡고, 예시 블록의 가짜 경로와 타임스탬프 때문에 거짓 위반이 보고된다.

@@ -809,6 +809,51 @@ pre {
   content: "· ";
 }
 
+/* 스킬 칩 (T-023). 세션 카드와 상세 헤더가 같은 모양을 쓴다. */
+.skill-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.78em;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.skill-chip--more {
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-faint);
+}
+
+.skill-chip__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.session-card__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.session-detail__skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.session-detail__skills-label {
+  color: var(--text-faint);
+  font-size: 0.85em;
+}
+
 .session-card__counts {
   display: flex;
   flex-wrap: wrap;

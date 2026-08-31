@@ -47,6 +47,31 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
+/**
+ * 이 세션이 거쳐 간 스킬. 서버가 처음 쓴 순서로 주므로 여기서 다시 정렬하지 않는다.
+ *
+ * 카드는 훑어보는 화면이라 앞의 몇 개만 보이고 나머지는 개수로 접는다. 두 번 이상
+ * 불린 스킬만 횟수를 붙인다 — 대부분 1회라서 "×1" 이 줄마다 붙으면 잡음이 된다.
+ */
+function SkillChips({ session, limit = 4 }: { session: SessionSummary; limit?: number }) {
+  const skills = session.skillUsage;
+  if (skills.length === 0) return null;
+  const shown = skills.slice(0, limit);
+  const hidden = skills.length - shown.length;
+
+  return (
+    <div className="session-card__skills" title={skills.map((skill) => skill.name).join(", ")}>
+      {shown.map((skill) => (
+        <span key={skill.name} className="skill-chip">
+          {skill.name}
+          {skill.count > 1 ? <span className="skill-chip__count">×{skill.count}</span> : null}
+        </span>
+      ))}
+      {hidden > 0 ? <span className="skill-chip skill-chip--more">+{hidden}</span> : null}
+    </div>
+  );
+}
+
 function LiveDot({ session }: { session: SessionSummary }) {
   if (session.live?.alive === true) {
     return (
@@ -114,6 +139,8 @@ export const SessionCard = memo(function SessionCard({
         )}
         {session.gitBranch ? <span className="session-card__branch">{session.gitBranch}</span> : null}
       </div>
+
+      <SkillChips session={session} limit={compact ? 3 : 6} />
 
       {compact ? null : (
         <>

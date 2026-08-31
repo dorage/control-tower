@@ -5,6 +5,8 @@ export interface BarRow {
   value: number;
   /** Rendered instead of the raw number. */
   display?: string;
+  /** 값 뒤에 흐리게 붙는 보조 수치. 퍼센트와 같은 자리를 쓴다. */
+  note?: string;
   /** Overrides the palette slot. */
   colorIndex?: number;
 }
@@ -55,6 +57,7 @@ export function BarBreakdown({
           </span>
           <span className="bar-breakdown__value">
             {row.display ?? row.value.toLocaleString()}
+            {row.note ? <span className="bar-breakdown__pct">{row.note}</span> : null}
             {showPercent && sum > 0 ? (
               <span className="bar-breakdown__pct">{((row.value / sum) * 100).toFixed(1)}%</span>
             ) : null}

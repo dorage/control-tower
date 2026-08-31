@@ -161,6 +161,19 @@ export function SessionDetailPage({ id }: { id: string }) {
           </span>
         </div>
 
+        {/* 어떤 스킬을 거쳐 왔는지. 없으면 줄 자체를 그리지 않는다 — 대부분의 세션이 그렇다. */}
+        {summary.skillUsage.length > 0 ? (
+          <div className="session-detail__skills">
+            <span className="session-detail__skills-label">스킬</span>
+            {summary.skillUsage.map((skill) => (
+              <span key={skill.name} className="skill-chip" title={dateTime(skill.firstUsedAt)}>
+                {skill.name}
+                {skill.count > 1 ? <span className="skill-chip__count">×{skill.count}</span> : null}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         {transcriptPath ? <div className="session-detail__source">{transcriptPath}</div> : null}
       </header>
 

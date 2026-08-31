@@ -190,3 +190,71 @@ export function sampleSession(sessionId: string, cwd = "/home/u/my-app"): unknow
     },
   ];
 }
+
+/**
+ * A transcript exercising both ways a skill shows up (T-023).
+ *
+ * `update-config` is called through the `Skill` tool and the records it then produces
+ * carry `attributionSkill`; that whole stretch is one invocation. `code-review` never
+ * appears as a tool call - that is what a slash command typed by the user looks like.
+ * Shapes taken from real transcripts: the invoking record itself has no
+ * `attributionSkill`, and the attributed stretch is interrupted by `tool_result` records
+ * that carry none.
+ */
+export function skillSession(sessionId: string, cwd = "/home/u/my-app"): unknown[] {
+  const record = (uuid: string, minutes: number, over: Record<string, unknown> = {}) => ({
+    type: "assistant",
+    uuid,
+    sessionId,
+    cwd,
+    timestamp: at(minutes),
+    message: { role: "assistant", model: "claude-opus-5", content: [{ type: "text", text: uuid }] },
+    ...over,
+  });
+
+  const skillCall = (uuid: string, minutes: number, skill: string, id: string) =>
+    record(uuid, minutes, {
+      message: {
+        role: "assistant",
+        model: "claude-opus-5",
+        content: [{ type: "tool_use", id, name: "Skill", input: { skill, args: "" } }],
+      },
+    });
+
+  return [
+    {
+      type: "user",
+      uuid: "s-u1",
+      sessionId,
+      cwd,
+      gitBranch: "main",
+      timestamp: at(0),
+      message: { role: "user", content: "설정을 고쳐줘" },
+    },
+    skillCall("s-a1", 1, "update-config", "sk1"),
+    {
+      type: "user",
+      uuid: "s-u2",
+      sessionId,
+      cwd,
+      timestamp: at(2),
+      message: { role: "user", content: [{ type: "tool_result", tool_use_id: "sk1", content: "ok" }] },
+    },
+    record("s-a2", 3, { attributionSkill: "update-config" }),
+    // attribution 이 비어 있는 레코드가 사이에 끼어도 같은 실행이다.
+    {
+      type: "user",
+      uuid: "s-u3",
+      sessionId,
+      cwd,
+      timestamp: at(4),
+      message: { role: "user", content: [{ type: "tool_result", tool_use_id: "sk2", content: "ok" }] },
+    },
+    record("s-a3", 5, { attributionSkill: "update-config" }),
+    // 툴 호출 없이 attribution 만 있는 스킬 — 사용자가 /code-review 를 직접 쳤을 때의 모양.
+    record("s-a4", 6, { attributionSkill: "code-review" }),
+    record("s-a5", 7, { attributionSkill: "code-review" }),
+    // 같은 스킬을 툴로 다시 부르면 두 번째 호출로 센다.
+    skillCall("s-a6", 8, "update-config", "sk3"),
+  ];
+}

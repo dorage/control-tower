@@ -20,7 +20,7 @@
 - `OP` — `ADD` | `START` | `DONE` | `BLOCK` | `UNBLOCK` | `DROP` | `NOTE`
 - `ID` — `T-<3자리>`. 한 번 발급되면 재사용하지 않는다.
 - `PRIORITY` — `P0`(선행/필수) | `P1`(핵심) | `P2`(개선). `ADD`에만 기록.
-- `AREA` — `core` | `api-session` | `api-fs` | `web-core` | `web-files` | `web-session` | `quality` | `docs`. `ADD`에만 기록.
+- `AREA` — `core` | `api-session` | `api-fs` | `api-telemetry` | `web-core` | `web-files` | `web-session` | `quality` | `docs`. `ADD`에만 기록.
 - `TITLE` — 큰따옴표로 감싼 한 줄 요약.
 - `DOC_PATH` — 자기완결적 작업 문서 경로. `ADD`에만 기록.
 - `ADD` 외의 OP는 `"<TITLE>"` 자리에 메모를 쓸 수 있고 생략해도 된다.
@@ -90,3 +90,10 @@
 2026-08-30T22:02:00Z START T-013
 2026-08-30T22:03:00Z NOTE T-013 "T-014 가 남긴 뷰어와 합쳐 미리보기·원문·편집 3탭으로 만들었다. 세 탭 모두 draft 를 원본으로 삼아 저장 전에 미리보기로 확인할 수 있다"
 2026-08-30T22:04:00Z NOTE T-013 "구현·타입체크·단위 테스트 완료. 브라우저 시나리오(IME 조합, Cmd+Z, 초안 복원 배너, beforeunload)는 이 환경에 브라우저가 없어 미검증"
+2026-08-31T13:20:00Z ADD T-021 P1 api-telemetry "OTLP 텔레메트리 수신기와 저장소" docs/todos/T-021-telemetry-otlp-receiver.md
+2026-08-31T13:20:01Z ADD T-022 P2 web-session "텔레메트리 대시보드" docs/todos/T-022-web-telemetry-dashboard.md
+2026-08-31T13:20:02Z NOTE T-021 "실측 근거: http/json 은 평범한 JSON POST 라 의존성 0. tel_point 33.9 B/행, tel_request 44.1 B/행. 보존 raw 30일/hourly 400일/daily 3650일/request 400일 → 최악 1.06 GiB (상한 5 GiB 의 21%)"
+2026-08-31T13:20:03Z NOTE T-021 "포트 4317 이 OTLP gRPC 기본 포트와 동일. /v1/metrics·/v1/logs 를 4317 에서 겸용하되 OTEL_EXPORTER_OTLP_PROTOCOL=http/json 누락 시 조용히 실패하는 함정을 문서화한다"
+2026-08-31T13:20:04Z NOTE T-004 "범위 추가: ChangeEvent 에 changedSessions/addedSessions/removedSessions 델타를 넣는다. fb-watchman 은 채택하지 않는다 — aarch64 prebuilt 부재로 소스 빌드 필요, fingerprint 맵 diff 로 의존성 0에 동일 효과"
+2026-08-31T13:20:05Z NOTE T-017 "범위 추가: 조건부 '오늘 비용' 타일(T-021 수집 시에만 렌더). 미수집 시 타일을 그리지 않는다 — $0.00 은 오해를 만든다"
+2026-08-31T13:20:06Z NOTE T-020 "선행을 T-022 까지로 확장. check-docs 에 AREA 유효성 검사 추가, 4317 경고와 *.db gitignore 를 수용 기준에 포함"

@@ -29,14 +29,47 @@ subscribe(listener: (event: ChangeEvent) => void): () => void   // 반환값은 
 subscriberCount(): number
 ```
 
-동작: 첫 구독자가 생기면 `config.watchIntervalMs`(기본 1500ms) 간격 타이머가 시작되고, 트랜스크립트 파일 크기/시각 + 세션 파일 상태의 해시가 바뀔 때만 리스너를 호출한다. 구독자가 0이 되면 타이머를 멈춘다. 즉 **라우트는 subscribe/해지만 정확히 하면 된다.**
+동작: 첫 구독자가 생기면 `config.watchIntervalMs`(기본 1500ms) 간격 타이머가 시작되고, 트랜스크립트 파일 크기/시각 + 세션 파일 상태의 해시가 바뀔 때만 리스너를 호출한다. 구독자가 0이 되면 타이머를 멈춘다.
+
+### 2.1 범위 추가 — 변경 델타
+
+원래 이 작업은 "subscribe/해지만 정확히 하면 된다"였다. 그러나 현재 `fingerprint()` 는 **전체를 한 해시로 뭉개기 때문에** 이벤트가 "뭔가 바뀌었다"밖에 말하지 못한다.
+
+```ts
+// src/services/watch.service.ts:24 — 어느 세션이 바뀐지 알 수 없다
+value: Bun.hash(`${transcriptPart}#${livePart}`).toString(16)
+```
+
+이러면 클라이언트는 매 이벤트마다 전부 다시 불러야 하고, T-018 이 "갱신하지 말아야 할 것을 갱신하지 않는 것에 성패가 걸린다"고 적은 문제를 풀 수 없다. **그래서 이 작업에 파일별 델타 계산을 포함한다** (§4.6).
+
+`ChangeEvent` 에 필드 세 개가 붙는다. 기존 필드는 그대로 두므로 하위 호환이다.
+
+```ts
+interface ChangeEvent {
+  type: "change";
+  fingerprint: string;
+  transcripts: number;
+  liveSessions: number;
+  at: string;
+  /** 이번 변경에서 크기/시각이 달라진 세션 id. */
+  changedSessions: string[];
+  /** 새로 나타난 세션 id. */
+  addedSessions: string[];
+  /** 사라진 세션 id. */
+  removedSessions: string[];
+}
+```
+
+fb-watchman 을 쓰지 않는다. 이 기기(aarch64)에 watchman 데몬 prebuilt 가 없어 소스 빌드가 필요하고, 외부 데몬 + 클라이언트 라이브러리를 추가하는 대가가 얻는 것보다 크다. 재귀 감시가 정말 필요해지면 `node:fs` 의 `watch(dir, { recursive: true })` 가 이 기기에서 동작함을 확인했으므로 그것이 다음 순서다.
 
 ## 3. 산출물
 
 | 파일 | 내용 |
 | --- | --- |
+| `src/services/watch.service.ts` | 파일별 델타 계산 (§4.6) |
 | `src/routes/events.route.ts` | `GET /api/events` (SSE) |
 | `src/routes/index.ts` | `...eventRoutes` 추가 |
+| `src/services/watch.service.test.ts` | 델타 계산 테스트 |
 
 ## 4. 상세 명세
 
@@ -138,6 +171,35 @@ export const eventRoutes = {
 
 `"/*": index` **앞에** `...eventRoutes`를 spread 한다(순서 자체는 Bun의 명시적 경로 우선 규칙 덕에 무관하지만 가독성상 API 라우트끼리 모은다).
 
+### 4.6 파일별 델타 계산
+
+`fingerprint()` 는 이미 `sessionId:size:modifiedAt` 문자열을 만든다. 해시로 뭉개기 **직전** 단계를 맵으로 유지하고 이전 맵과 비교하면 델타가 공짜로 나온다. 의존성 0, 20줄 내외.
+
+```ts
+// 모듈 스코프. lastFingerprint 와 나란히 둔다.
+let lastState = new Map<string, string>();   // sessionId -> "size:mtime"
+
+function diff(prev: Map<string, string>, next: Map<string, string>) {
+  const changed: string[] = [];
+  const added: string[] = [];
+  const removed: string[] = [];
+  for (const [id, sig] of next) {
+    const before = prev.get(id);
+    if (before === undefined) added.push(id);
+    else if (before !== sig) changed.push(id);
+  }
+  for (const id of prev.keys()) if (!next.has(id)) removed.push(id);
+  return { changed, added, removed };
+}
+```
+
+주의할 점 두 가지.
+
+- **첫 tick 은 델타를 보내지 않는다.** `subscribe()` 는 첫 구독자에서 즉시 `tick()` 을 부르는데, 그때 `lastState` 가 비어 있으므로 모든 세션이 `added` 로 잡힌다. 첫 계산은 상태만 채우고 리스너를 호출하지 않도록, 기존 `lastFingerprint === ""` 조건과 함께 처리한다. (현재 코드는 첫 tick 에서 해시가 달라지므로 이벤트를 한 번 보낸다. 이 동작을 유지하려면 `added` 를 비워서 보낸다 — 어느 쪽이든 **클라이언트가 "빈 델타 = 전체 갱신"으로 오해하지 않게** 명시적 필드로 구분한다.)
+- **라이브 세션 파일(`sessions/*.json`) 변경도 델타에 넣는다.** 트랜스크립트는 `sessionId` 로 식별되고 라이브 세션도 `sessionId` 를 갖고 있으므로 같은 키 공간에 합칠 수 있다. 두 소스가 같은 세션을 가리키면 한 번만 보고한다(`Set` 으로 합집합).
+
+`subscriberCount()` 와 `subscribe()` 시그니처는 바꾸지 않는다. T-018 이 아직 없으므로 소비자는 T-004 뿐이다.
+
 ## 5. 수용 기준
 
 - [ ] `curl -N localhost:4317/api/events`가 즉시 `event: ready`를 출력하고 연결을 유지한다.
@@ -145,7 +207,10 @@ export const eventRoutes = {
 - [ ] 아무 일이 없으면 25초마다 `: ping`이 온다.
 - [ ] curl을 Ctrl-C로 끊고 나서 `subscriberCount()`가 0으로 돌아온다(= 서버 로그에 추가 폴링 흔적이 없다).
 - [ ] 동시에 3개 연결을 열었다가 모두 닫아도 서버가 살아있고 CPU가 idle로 돌아온다.
-- [ ] `bunx tsc --noEmit` 통과.
+- [ ] 트랜스크립트 한 개에 append 하면 `changedSessions` 에 그 세션 id 만 들어오고 나머지 배열은 비어 있다.
+- [ ] 세션 파일을 새로 만들면 `addedSessions`, 지우면 `removedSessions` 에 잡힌다.
+- [ ] 첫 연결 직후의 `change` 이벤트가 모든 세션을 `added` 로 보고하지 않는다.
+- [ ] `bunx tsc --noEmit` 통과, `bun test` 통과.
 
 ## 6. 검증
 
@@ -171,7 +236,7 @@ kill %1
 
 ## 7. 완료 처리
 
-1. `docs/ENDPOINTS.md` — `/api/events`를 `✅`로 하고 실제 프레임 예시를 구현과 맞춘다.
-2. `docs/STRUCTURE.md` — `src/routes/events.route.ts`를 `✅`로.
-3. `docs/CONVENTIONS.md` §7 — "스트리밍 응답은 abort/cancel/enqueue 실패 세 경로 모두에서 멱등하게 정리한다"를 추가.
+1. `docs/ENDPOINTS.md` — `/api/events`를 `✅`로 하고 실제 프레임 예시를 구현과 맞춘다. `change` 프레임 예시에 `changedSessions`/`addedSessions`/`removedSessions` 를 포함한다.
+2. `docs/STRUCTURE.md` — `src/routes/events.route.ts`, `src/services/watch.service.test.ts`를 `✅`로.
+3. `docs/CONVENTIONS.md` §7 — "스트리밍 응답은 abort/cancel/enqueue 실패 세 경로 모두에서 멱등하게 정리한다", "변경 알림은 무엇이 바뀌었는지를 함께 보낸다 — 수신 측이 전체를 다시 읽게 만들지 않는다"를 추가.
 4. `docs/TODO.md`에 append: `<UTC-ISO> DONE T-004`

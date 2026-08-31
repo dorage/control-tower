@@ -5,7 +5,7 @@
 | **ID** | T-020 |
 | **우선순위** | P1 |
 | **영역** | docs |
-| **선행** | T-001 ~ T-019 (마지막에 수행) |
+| **선행** | T-001 ~ T-022 (마지막에 수행) |
 | **후행** | 없음 |
 
 ## 1. 목적
@@ -66,6 +66,12 @@ find . -type f \
 ```bash
 grep -n 'Bun.env' src/config.ts
 ```
+
+**⚠️ 포트 4317 경고를 반드시 문서에 남긴다.** `config.ts` 의 기본 포트 4317 은 **OTLP gRPC 의 기본 포트와 정확히 같다.** T-021 이 이 포트에서 `POST /v1/metrics`·`/v1/logs` 를 받기로 결정했으므로 충돌이 아니라 의도된 겸용이지만, 사용자가 `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` 을 빼먹으면 claude 가 gRPC 로 시도해 **조용히 실패**한다. 에러가 화면에 뜨지 않아 원인을 찾기 어렵다.
+
+- `docs/STRUCTURE.md` 환경변수 표의 `PORT` 항목에 이 경고를 붙인다.
+- `docs/README.md` 텔레메트리 설정 안내에 굵게 박는다.
+- `docs/ENDPOINTS.md` 에 `/v1/*` 이 `/api/*` 규약(목록 봉투·에러 형식)을 따르지 않는 이유를 적는다.
 
 ### 3.3 CONVENTIONS.md 대조
 
@@ -130,9 +136,12 @@ grep -o 'DONE T-[0-9]*' docs/TODO.md | sort   # 완료된 작업
 | 환경변수 ↔ STRUCTURE | `src/config.ts`의 `Bun.env.X` 이름을 뽑아, `docs/STRUCTURE.md` 환경변수 표에 있는지 확인 |
 | TODO 문서 존재 | `docs/TODO.md`의 각 `ADD` 줄이 가리키는 경로가 실제 파일인지 확인 |
 | TODO 형식 | 각 LOG 줄이 `<ISO> <OP> <ID> ...` 문법에 맞는지, 타임스탬프가 단조 증가하는지 |
+| AREA 유효성 | `ADD` 줄의 `AREA` 가 TODO.md 규칙 절에 정의된 값인지 (`api-telemetry` 가 T-021 에서 추가됐다) |
 | 미완료 표기 | 문서에 `⬜ 예정(T-xxx)`가 남아 있으면 해당 T-xxx가 `DONE`이 아닌지 확인 (DONE인데 ⬜면 불일치) |
 
-> **파싱 범위**: `docs/TODO.md`는 `## LOG` 줄 **아래**만 읽는다. 그 위의 규칙·예시 블록에도 `T-001`이나 `docs/todos/...` 문자열이 나오므로, 파일 전체를 grep 하면 존재하지 않는 예시 경로를 실제 참조로 오인한다.
+> **파싱 범위**: `docs/TODO.md`는 `## LOG` 줄 **아래**만 읽는다. 그 위의 규칙·예시 블록에도 `T-001`이나 `docs/todos/...` 문자열이 나오므로, 파일 전체를 grep 하면 존재하지 않는 예시 경로(`docs/todos/T-001-slug.md`)를 실제 참조로 오인하고 예시 타임스탬프 때문에 단조 증가 검사가 거짓 실패한다.
+>
+> **그리고 `"## LOG"` 를 부분문자열로 찾으면 안 된다.** 규칙 6번 자체가 `` `## LOG` 아래만 로그다 `` 라는 문구를 담고 있어서, `split("## LOG")` 나 `indexOf("## LOG")` 는 규칙 절 중간을 시작점으로 잡는다. **줄 전체가 `## LOG` 인 줄**을 찾아야 한다(`line.trim() === "## LOG"`). 이 작업을 준비하며 실제로 밟은 함정이고, 밟으면 위반 18건이 거짓으로 보고된다.
 
 출력은 사람이 읽는 목록이다. 실패 항목마다 `파일:줄  문제` 형태로 한 줄씩.
 
@@ -194,6 +203,8 @@ grep -o 'DONE T-[0-9]*' docs/TODO.md | sort   # 완료된 작업
 - [ ] `docs/TODO.md`의 모든 `ADD`에 문서 파일이 존재하고, 완료된 것에 `DONE`이 있다.
 - [ ] `docs/TODO.md`가 append-only로 유지됐다(줄 수정 흔적 없음).
 - [ ] 루트 `README.md`에 `bun init` 기본 문구가 없다.
+- [ ] 포트 4317 ↔ OTLP 기본 포트 경고가 `STRUCTURE.md`·`README.md` 두 곳에 있다.
+- [ ] `.gitignore` 가 `*.db`/`*.db-wal`/`*.db-shm` 를 덮는다(텔레메트리 DB 에 `user.email`·계정 UUID 가 들어 있다).
 - [ ] `bun run check:docs`가 종료 코드 0으로 통과한다.
 - [ ] `bun run check`가 통과한다.
 

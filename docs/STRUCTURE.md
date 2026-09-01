@@ -95,11 +95,13 @@ control-tower/
         │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
         │   ├── timeline.test.ts    ✅        toolSummary (잘린 JSON 방어)
         │   ├── stat-tile.tsx       ✅        수치 타일 (링크형/비링크형)
+        │   ├── quick-links.tsx     ✅        같은 호스트 다른 포트 서비스 바로가기 (T-024)
+        │   ├── quick-links.test.ts  ✅        quickLinkHref 주소 조립
         │   ├── bar-breakdown.tsx   ✅        가로 막대 분포 (CSS 폭, 라이브러리 없음)
         │   ├── stacked-timeline.tsx ✅       시계열 누적 막대 (인라인 SVG)
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
-            ├── dashboard.page.tsx      ✅        타일 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
+            ├── dashboard.page.tsx      ✅        바로가기 줄 + 타일 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
             ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(미리보기·원문·편집 3탭)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
             ├── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { HistoryEntry, ProjectSummary, Stats } from "../../domain/types";
 import { BarBreakdown } from "../components/bar-breakdown";
+import { QuickLinks } from "../components/quick-links";
 import { SessionCard, SessionCardSkeleton } from "../components/session-list";
 import { StatTile, StatTileRow } from "../components/stat-tile";
 import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
@@ -97,6 +98,7 @@ export function DashboardPage() {
   if (stats.error) {
     return (
       <div className="dashboard">
+        <QuickLinks />
         <ErrorBox error={stats.error} onRetry={stats.reload} />
       </div>
     );
@@ -105,6 +107,7 @@ export function DashboardPage() {
   if (!stats.data) {
     return (
       <div className="dashboard">
+        <QuickLinks />
         <Spinner label="대시보드 불러오는 중" />
       </div>
     );
@@ -115,6 +118,7 @@ export function DashboardPage() {
   if (data.sessions === 0) {
     return (
       <div className="dashboard">
+        <QuickLinks />
         <EmptyState
           title="아직 세션 데이터가 없습니다"
           hint="CLAUDE_HOME 환경변수로 관찰 경로를 바꿀 수 있습니다."
@@ -130,6 +134,7 @@ export function DashboardPage() {
 
   return (
     <div className="dashboard">
+      <QuickLinks />
       <div className="dashboard__head">
         <span className="dashboard__updated" title={dateTime(data.updatedAt)}>
           {relativeTime(data.updatedAt)} 기준

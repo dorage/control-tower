@@ -198,24 +198,26 @@ route  →  service  →  repository  →  disk
 
 `src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
 
-`bun test --coverage` 기준 현황(2026-08-31):
+`bun test --coverage` 기준 현황(2026-09-01):
 
 | 파일 | % Funcs | % Lines |
 | --- | --- | --- |
 | `src/lib/text.ts` | 100.00 | 100.00 |
-| `src/lib/http.ts` | 87.50 | 97.01 |
+| `src/repositories/fs.repository.ts` | 100.00 | 100.00 |
+| `src/services/fs.service.ts` | 100.00 | 99.60 |
 | `src/services/watch.service.ts` | 92.31 | 97.89 |
-| `src/services/telemetry.service.ts` | 84.21 | 93.75 |
-| `src/services/session.service.ts` | 90.62 | 90.71 |
-| `src/repositories/telemetry.repository.ts` | 95.00 | 83.23 |
+| `src/lib/http.ts` | 87.50 | 97.01 |
 | `src/web/lib/markdown.ts` | 100.00 | 96.72 |
-| `src/services/fs.service.ts` | 75.00 | 59.76 |
+| `src/services/telemetry.service.ts` | 84.21 | 93.75 |
+| `src/services/session.service.ts` | 94.44 | 93.05 |
+| `src/repositories/telemetry.repository.ts` | 95.00 | 83.23 |
 | `src/web/lib/format.ts` | 90.00 | 0.00 |
 
-두 줄은 숫자만 보고 오해하기 쉬워 적어 둔다.
+한 줄은 숫자만 보고 오해하기 쉬워 적어 둔다.
 
 - **`format.ts` 의 % Lines 0.00 은 커버리지가 없다는 뜻이 아니다.** 함수 커버리지는 90%다. 이 파일은 전부 export 된 순수 함수라 모듈 최상단에 실행되는 줄이 거의 없고, 계측이 그렇게 잡힌다. 테스트(`format.test.ts`)는 실제로 돌고 있다.
-- **`fs.service.ts` 의 59.76% 은 실제로 낮다.** 경로 탈출 방어와 저장 충돌은 촘촘히 덮여 있지만 디렉터리 목록·트리 구축 경로가 비어 있다. 보안에 직결되는 부분이 덮여 있어 지금은 감수하되, 이 파일을 손볼 때 함께 올린다.
+
+디스크에 닿는 코드는 임시 디렉터리에 **실제 상황을 만들어** 확인한다. 픽스처를 만들 때 `Bun.write` 는 없는 부모 디렉터리를 만들어 주므로 파일마다 `mkdir` 을 부르지 않는다(빈 디렉터리에만 필요하다). 권한 오류(`EACCES`)는 `chmod(0o000)` 으로 실제로 만들고 — `afterAll` 에서 되돌리지 않으면 `rm` 이 실패한다 — 너비 상한 같은 경계도 실제 개수를 만들어 넘긴다(2001개 생성에 실측 64ms). 단, `Bun.file(dir).exists()` 는 디렉터리에 `false` 를 돌려주므로 디렉터리 확인에 쓰지 않는다.
 
 ## 12. 문서화 의무
 

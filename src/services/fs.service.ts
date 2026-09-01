@@ -112,16 +112,28 @@ export function isEditable(name: string): boolean {
   return config.writableExtensions.includes(extname(name).toLowerCase());
 }
 
+/**
+ * Bun 런타임이 그대로 다루는 확장자를 기준으로 삼는다(bun.com/docs/runtime/file-types).
+ * 이 저장소에 실제로 나타나는 파일이 "text" 로 떨어지면 뷰어의 라벨이 쓸모없어진다.
+ * `.wasm`·`.node` 는 목록에 있지만 바이너리라 `readFile` 이 어차피 "text" 로 되돌린다.
+ */
 const LANGUAGES: Record<string, string> = {
   ".md": "markdown",
   ".markdown": "markdown",
   ".ts": "typescript",
   ".tsx": "typescript",
+  ".mts": "typescript",
+  ".cts": "typescript",
   ".js": "javascript",
   ".jsx": "javascript",
+  ".mjs": "javascript",
+  ".cjs": "javascript",
   ".json": "json",
+  ".jsonc": "json",
+  ".json5": "json",
   ".css": "css",
   ".html": "html",
+  ".xml": "xml",
   ".sh": "shell",
   ".py": "python",
   ".yml": "yaml",

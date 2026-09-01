@@ -19,6 +19,11 @@ Node 대신 bun을 사용한다.
 - `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
 - `WebSocket` is built-in. Don't use `ws`.
 - Prefer `Bun.file` over `node:fs`'s readFile/writeFile
+- Use `Bun.write(path, data)` instead of `node:fs`'s `writeFile`. It creates missing parent directories, so don't call `mkdir` first — only empty directories still need `node:fs`'s `mkdir`.
+- Use `Bun.file(path).delete()` instead of `node:fs`'s `unlink`.
+- Use `Bun.file(path).bytes()` for raw bytes and `.text()` / `.json()` for decoded content, instead of `node:fs`'s `readFile`.
+- `Bun.file(path).exists()` returns **false for a directory**. Don't use it to check that a directory exists — use `node:fs`'s `stat`.
+- `node:fs` is still required for directory traversal (`readdir`), metadata (`stat`), atomic `rename`, `mkdir`, `chmod`, and `mkdtemp`. Import it explicitly in those cases only.
 - Bun.$`ls` instead of execa.
 
 ### Testing

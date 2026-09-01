@@ -112,6 +112,16 @@ bun --hot ./index.ts
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 ```
 
+## 형상관리
+
+- git 으로 관리하는 리포지토리가 아니라면 `형상관리` 규칙들을 무시합니다.
+- 조사를 시행하기 이전에 현재 브랜치의 HEAD가 최신인지 확인해요.
+- 작업은 항상 브랜치를 생성하고, 해당 브랜치로 워크트리를 생성해서 작업해요.
+- 작업을 마무리하면 git으로 커밋, 푸시합니다.
+- 현재 작업이 PR 되어 있지 않다면, PR을 작성합니다.
+- 커밋 전, 타겟 브랜치의 최근 변경사항을 포함했는지 확인해요.
+- 타겟 브랜치의 최근 변경사항이 포함되어 있지 않다면, rebase해서 브랜치를 업데이트해요.
+
 ### 브랜치 명명
 
 작업 브랜치는 `<type>/<short-description>` 형식을 사용해요.
@@ -130,17 +140,18 @@ bun --hot ./index.ts
 
 AI 에이전트가 자동 생성하는 worktree 브랜치는 `worktree-<short-description>` 또는 `worktree-<type>+<short-description>` 형식으로 만들어지는데, 사람이 PR 을 올릴 때는 위 규칙에 맞게 rename 해서 머지하는 걸 권장해요.
 
+
 ### 커밋
 
 작업을 마무리하면 git으로 커밋해요.
 
 - 하나의 작업이 끝나면 적절한 메시지와 함께 커밋
-- Why 를 위주로 설명
-- conventional commit 사용
 - conventional commit과 작업범위 작성
-- 예시: feat({nx_package_name}): 포인트 결제 API 구현
+- 예시: `<type>(<nx_package_name>):<message>` 포인트 결제 API 구현
+- `type` 은 conventional commit type 과 일치 (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`)
+- `message` 는 어떻게 가 아닌 변경사유를 담습니다.
 
-### 문서화
+## 문서화
 
 다음과 같은 경우 README.md를 업데이트해요.
 - 프로젝트 디렉터리 구조 변경

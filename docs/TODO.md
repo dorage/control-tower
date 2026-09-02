@@ -162,3 +162,5 @@
 2026-09-01T13:50:01Z NOTE T-024 "환경변수로 빼지 않았다. 값을 브라우저로 내려보낼 API 가 하나 더 필요한데 항목이 label·port 두 칸뿐이다. 사람마다 목록이 달라지는 시점에 /api/quick-links 로 옮긴다"
 2026-09-01T13:50:02Z NOTE T-024 "대시보드 네 갈래(에러·로딩·빈 상태·정상) 모두에 넣었다. /api/stats 가 실패한 상황이야말로 다른 서비스로 건너갈 일이 생기는 때다"
 2026-09-01T13:50:03Z DONE T-024 "FreshRSS(8080) 바로가기 1건으로 시작. quickLinkHref 테스트 4종 추가(166 → 170 pass), bun run check 통과. 번들에 컴포넌트가 실렸는지 실서버(4319)에서 확인. 브라우저 육안 확인은 사용자 몫으로 남긴다"
+2026-09-02T09:56:00Z ADD T-025 P1 api-fs "라인 단위 코멘트 저장소와 CRUD API" docs/todos/T-025-comments-api.md
+2026-09-02T09:56:01Z ADD T-026 P1 web-files "파일뷰 코멘트 레이어(라인·멀티라인 선택)" docs/todos/T-026-web-file-comments.md

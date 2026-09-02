@@ -8,10 +8,11 @@
 - 실행 `bun <file>`, 설치 `bun install`, 스크립트 `bun run <script>`, 실행기 `bunx`.
 - 서버는 항상 핫 리로드(`bun --hot`)로 띄운다. `dev`/`start` 스크립트 둘 다에 플래그가 박혀 있다. 핫 리로드가 곤란한 경우에만 `start:prod`를 쓴다.
 - 서버는 `Bun.serve()`. Express 등 HTTP 프레임워크를 추가하지 않는다.
-- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat·원자적 `rename`, `fs.service.ts`의 `realpath`, `src/db/*.db.ts`의 부모 디렉터리 생성(`mkdirSync`), 그리고 `scripts/*`·`test/*`·`*.test.ts`의 동기 읽기와 임시 디렉터리 조작.
+- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat·원자적 `rename`, `fs.service.ts`의 `realpath`, `system.repository.ts`의 `/proc` 순회(`readdir`), `src/db/*.db.ts`의 부모 디렉터리 생성(`mkdirSync`), 그리고 `scripts/*`·`test/*`·`*.test.ts`의 동기 읽기와 임시 디렉터리 조작.
 - 환경변수는 `Bun.env`로 읽는다. `dotenv`를 쓰지 않는다(Bun이 `.env`를 자동 로드).
 - 번들러/개발서버는 Bun의 HTML import. `vite`/`webpack`/`esbuild`를 쓰지 않는다.
 - 테스트는 `bun test` (`import { test, expect } from "bun:test"`).
+- **주기적으로 도는 경로에서 외부 명령을 띄우지 않는다.** 호스트 지표는 `ps`/`top` 이 아니라 `/proc` 를 직접 읽는다. 이유는 두 가지다 — `ps` 의 `%cpu` 는 프로세스 수명 전체의 평균이라 "지금" 을 말해 주지 않고, 폴링마다 프로세스를 띄우는 것은 SD 카드에서 도는 기기에 대한 낭비다.
 
 ## 2. 의존성 정책
 
@@ -181,6 +182,8 @@ route  →  service  →  repository  →  disk
 - **연결이 끊겼다 돌아온 경우는 가짜 이벤트를 만들지 말고 `null` 로 알린다.** 빈 델타를 가진 이벤트를 지어내면, 델타로 거르는 화면이 "할 일 없음"으로 읽는다.
 - 탭이 숨겨지면(`visibilityState === "hidden"`) 연결을 끊는다. 백그라운드 탭이 서버 폴러를 붙잡고 있을 이유가 없다.
 - 분석 화면은 자동 갱신하지 않는다. 읽는 중에 다시 그려지면 방해다.
+- **예외는 성능 화면 하나다.** 호스트의 CPU·메모리는 초 단위로 변해서 1분 전 값이 의미가 없다. SSE 가 아니라 폴링으로 받고(`hooks/use-poll.ts`), `/system` 은 3초·대시보드 카드는 5초다. 규칙은 그대로 지킨다 — **탭이 숨겨지면 타이머를 끄고, 돌아오면 즉시 한 번 부른 뒤 다시 건다.** 사용자가 끌 수 있는 토글을 화면에 둔다.
+- **폴링하는 화면의 값은 서버에서 묶는다.** 탭 두 개가 각자 3초로 물어봐도 서버는 같은 표본을 돌려준다(`SYSTEM_CACHE_MS`). 클라이언트마다 /proc 를 다시 훑게 두지 않는다.
 
 ## 11. 테스트
 
@@ -196,25 +199,28 @@ route  →  service  →  repository  →  disk
 
 수치 목표를 강제하지 않는다. 대신 **다음 파일에 테스트가 하나도 없으면 안 된다**는 규칙만 둔다.
 
-`src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
+`src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/services/system.service.ts` · `src/repositories/system.repository.ts` · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
 
-`bun test --coverage` 기준 현황(2026-09-01):
+`bun test --coverage` 기준 현황(2026-09-02):
 
 | 파일 | % Funcs | % Lines |
 | --- | --- | --- |
 | `src/lib/text.ts` | 100.00 | 100.00 |
 | `src/repositories/fs.repository.ts` | 100.00 | 100.00 |
+| `src/repositories/system.repository.ts` | 100.00 | 99.28 |
 | `src/services/fs.service.ts` | 100.00 | 99.60 |
 | `src/services/watch.service.ts` | 92.31 | 97.89 |
 | `src/lib/http.ts` | 87.50 | 97.01 |
 | `src/web/lib/markdown.ts` | 100.00 | 96.72 |
 | `src/services/telemetry.service.ts` | 84.21 | 93.75 |
-| `src/services/session.service.ts` | 94.44 | 93.05 |
+| `src/services/session.service.ts` | 94.59 | 93.11 |
+| `src/services/system.service.ts` | 95.00 | 82.39 |
 | `src/repositories/telemetry.repository.ts` | 95.00 | 83.23 |
 | `src/web/lib/format.ts` | 90.00 | 0.00 |
 
 한 줄은 숫자만 보고 오해하기 쉬워 적어 둔다.
 
+- **`system.service.ts` 의 미커버 줄은 대부분 `unsupported()` 하나다.** 리눅스가 아닌 플랫폼에서만 도는 분기라 이 기계에서는 실행되지 않는다. 그 경로를 지키는 테스트는 `test.if(!LINUX)` 로 붙어 있고 여기서는 skip 된다.
 - **`format.ts` 의 % Lines 0.00 은 커버리지가 없다는 뜻이 아니다.** 함수 커버리지는 90%다. 이 파일은 전부 export 된 순수 함수라 모듈 최상단에 실행되는 줄이 거의 없고, 계측이 그렇게 잡힌다. 테스트(`format.test.ts`)는 실제로 돌고 있다.
 
 디스크에 닿는 코드는 임시 디렉터리에 **실제 상황을 만들어** 확인한다. 픽스처를 만들 때 `Bun.write` 는 없는 부모 디렉터리를 만들어 주므로 파일마다 `mkdir` 을 부르지 않는다(빈 디렉터리에만 필요하다). 권한 오류(`EACCES`)는 `chmod(0o000)` 으로 실제로 만들고 — `afterAll` 에서 되돌리지 않으면 `rm` 이 실패한다 — 너비 상한 같은 경계도 실제 개수를 만들어 넘긴다(2001개 생성에 실측 64ms). 단, `Bun.file(dir).exists()` 는 디렉터리에 `false` 를 돌려주므로 디렉터리 확인에 쓰지 않는다.

@@ -27,7 +27,8 @@ control-tower/
     ├── config.ts                   ✅        환경변수 → 설정 객체, 경로 상수
     ├── domain/
     │   ├── types.ts                ✅        디스크 원본 타입 + 도메인 타입
-    │   └── telemetry.ts            ✅        OTLP 원본 타입 + 시리즈 키·조회 타입
+    │   ├── telemetry.ts            ✅        OTLP 원본 타입 + 시리즈 키·조회 타입
+    │   └── system.ts               ✅        호스트 성능 지표 타입 (T-026)
     ├── db/
     │   └── telemetry.db.ts         ✅        bun:sqlite 핸들·스키마·PRAGMA (auto_vacuum=incremental)
     ├── lib/                                  도메인 지식 없는 순수 유틸
@@ -40,6 +41,8 @@ control-tower/
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
     │   ├── transcript.repository.ts   ✅     ~/.claude/projects/<project>/<id>.jsonl (LRU 캐시)
     │   ├── telemetry.repository.ts ✅        텔레메트리 insert·집계 조회·롤업·보존·크기 차단기
+    │   ├── system.repository.ts    ✅        /proc 읽기 + 순수 파서 (CPU·메모리·프로세스)
+    │   ├── system.repository.test.ts ✅      실측 /proc 문자열 파싱 · 방어 파서 · 실제 /proc 스모크
     │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
@@ -53,6 +56,8 @@ control-tower/
     │   ├── watch.service.test.ts    ✅        diffState · 델타 통합 테스트
     │   ├── telemetry.service.ts    ✅        OTLP 파싱 · 카디널리티 가드 · 보존 스케줄 · 조회
     │   ├── telemetry.service.test.ts ✅      파싱·가드·롤업 멱등·크기 차단기 테스트
+    │   ├── system.service.ts       ✅        스냅샷 두 장의 차이 → 지표, 표본 캐시 (T-026)
+    │   ├── system.service.test.ts   ✅       buildMetrics 순수 계산 · 정렬 · 경계
     │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
     │   └── fs.service.test.ts       ✅        경로 탈출 방어 · 저장 충돌·원자성 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
@@ -61,6 +66,7 @@ control-tower/
     │   ├── session.route.ts        ✅        /api/sessions · /:id · /:id/timeline
     │   ├── project.route.ts        ✅        /api/projects
     │   ├── stats.route.ts          ✅        /api/stats
+    │   ├── system.route.ts         ✅        /api/system
     │   ├── history.route.ts        ✅        /api/history
     │   ├── events.route.ts         ✅        /api/events (SSE)
     │   ├── telemetry.route.ts      ✅        /api/telemetry/status · tokens · cost · timeseries · latency
@@ -85,7 +91,8 @@ control-tower/
         ├── hooks/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   ├── use-editor-file.ts  ✅        파일 로드/더티/저장 상태 기계 · 초안 보존
-        │   └── use-live.ts         ✅        SSE 구독 (모듈 스코프 EventSource 하나, 참조 계수)
+        │   ├── use-live.ts         ✅        SSE 구독 (모듈 스코프 EventSource 하나, 참조 계수)
+        │   └── use-poll.ts         ✅        탭이 보일 때만 도는 폴링 (T-026)
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
@@ -95,15 +102,18 @@ control-tower/
         │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
         │   ├── timeline.test.ts    ✅        toolSummary (잘린 JSON 방어)
         │   ├── stat-tile.tsx       ✅        수치 타일 (링크형/비링크형)
+        │   ├── meter.tsx           ✅        용량 대비 게이지 · 코어별 막대 (T-026)
+        │   ├── process-table.tsx   ✅        상위 프로세스 목록 (T-026)
         │   ├── quick-links.tsx     ✅        같은 호스트 다른 포트 서비스 바로가기 (T-024)
         │   ├── quick-links.test.ts  ✅        quickLinkHref 주소 조립
         │   ├── bar-breakdown.tsx   ✅        가로 막대 분포 (CSS 폭, 라이브러리 없음)
         │   ├── stacked-timeline.tsx ✅       시계열 누적 막대 (인라인 SVG)
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
-            ├── dashboard.page.tsx      ✅        바로가기 줄 + 타일 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
+            ├── dashboard.page.tsx      ✅        바로가기 줄 + 타일 + 시스템 카드 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
             ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(미리보기·원문·편집 3탭)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
+            ├── system.page.tsx         ✅        CPU·메모리 게이지 + 상위 프로세스 20 (T-026)
             ├── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
             └── telemetry.page.tsx      ✅        토큰·비용 분포/추이/지연 + 미수집 설정 안내
 ```
@@ -129,6 +139,7 @@ routes  →  services  →  repositories  →  디스크
 | 실행 중 세션 | `$CLAUDE_HOME/sessions/<pid>.json` | `live-session.repository.ts` |
 | 프롬프트 히스토리 | `$CLAUDE_HOME/history.jsonl` | `history.repository.ts` |
 | 워크스페이스 파일 | `$WORKSPACE_ROOTS`의 각 루트 | `fs.repository.ts` (T-005) |
+| 호스트 성능 | `/proc/stat` · `/proc/meminfo` · `/proc/<pid>/stat` · `/proc/loadavg` · `/proc/uptime` · `/sys/class/thermal/thermal_zone0/temp` | `system.repository.ts` (T-026) |
 
 `projectId`는 절대경로를 `/` → `-`로 치환한 형태다(`-home-dorage-workspace-app`). 역변환은 손실이 있어 best-effort이며, 트랜스크립트의 `cwd` 필드가 있으면 그쪽을 우선한다.
 
@@ -142,6 +153,8 @@ routes  →  services  →  repositories  →  디스크
 | `WATCH_INTERVAL_MS` | `1500` | 변경 감지 폴링 주기 |
 | `MAX_BLOCK_CHARS` | `4000` | 타임라인 블록당 최대 문자 수 |
 | `LOG_REQUESTS` | `0` | `1`이면 요청당 한 줄 로그 |
+| `SYSTEM_SAMPLE_MS` | `400` | CPU 사용률에 필요한 두 번째 /proc 읽기까지의 간격. 직전 표본이 60초 안쪽이면 쓰이지 않는다 |
+| `SYSTEM_CACHE_MS` | `1000` | 이 시간 안의 `/api/system` 요청은 같은 표본을 받는다 |
 | `WORKSPACE_ROOTS` | `$HOME/workspace` | 탐색 허용 루트. `:` 구분. 없는 경로는 조용히 제외 |
 | `FS_MAX_READ_BYTES` | `2097152` | 파일 읽기/쓰기 본문 상한 |
 | `FS_WRITABLE_EXTENSIONS` | `.md,.markdown` | 쓰기 허용 확장자 |

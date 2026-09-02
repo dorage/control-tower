@@ -158,6 +158,19 @@ function isConversational(record: TranscriptRecord): boolean {
   return type === "user" || type === "assistant" || type === "system" || type === "attachment";
 }
 
+/**
+ * 사람의 프롬프트와 모델의 답변만. `includeEvents: false` 가 남기는 범위다.
+ *
+ * `isConversational` 보다 좁다 — `system`(훅·커맨드 출력)과 `attachment`(훅 결과,
+ * 파일 첨부 자리표시)는 대화가 아니라 주변 잡음이고, 실제 트랜스크립트에서 사용자
+ * 프롬프트보다 많은 일이 흔하다. 그래서 읽기용 기본값에서는 빼고, `includeEvents`
+ * 를 켤 때 이벤트와 함께 돌아온다(그때의 kind·블록은 `isConversational` 이 정한다).
+ */
+function isDialogue(record: TranscriptRecord): boolean {
+  const type = record.type ?? "";
+  return type === "user" || type === "assistant";
+}
+
 function eventLabel(record: TranscriptRecord): string {
   const type = record.type ?? "unknown";
   if (type === "ai-title") return `title: ${record.aiTitle ?? ""}`;
@@ -397,7 +410,7 @@ export async function getTimeline(sessionId: string, options: TimelineOptions = 
   const records = await readTranscript(ref);
   const entries: TimelineEntry[] = [];
   records.forEach((record, index) => {
-    if (!includeEvents && !isConversational(record)) return;
+    if (!includeEvents && !isDialogue(record)) return;
     if (!includeSidechain && record.isSidechain === true) return;
     entries.push(toTimelineEntry(record, index));
   });

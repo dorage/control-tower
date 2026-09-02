@@ -135,6 +135,21 @@ test("기본 타임라인에는 이벤트 엔트리가 없다", async () => {
   expect(timeline!.entries.every((entry) => entry.kind !== "event")).toBe(true);
 });
 
+// 화면 기본값이 "사람의 프롬프트와 모델의 답변만" 이므로 attachment·system 도 빠진다.
+test("기본 타임라인에는 attachment 엔트리가 없다", async () => {
+  const timeline = await getTimeline(SESSION);
+  expect(timeline!.entries.every((entry) => entry.kind !== "attachment")).toBe(true);
+  expect(timeline!.entries.every((entry) => entry.kind === "user" || entry.kind === "assistant")).toBe(true);
+});
+
+test("includeEvents: true 면 attachment 엔트리가 돌아온다", async () => {
+  const timeline = await getTimeline(SESSION, { includeEvents: true });
+  const attachment = timeline!.entries.find((entry) => entry.kind === "attachment");
+  expect(attachment).toBeDefined();
+  // 이벤트가 아니라 attachment 로 남으므로 블록은 eventLabel 이 아닌 첨부 자리표시다.
+  expect((attachment!.blocks[0] as { text: string }).text).toBe("[attachment: unknown]");
+});
+
 // 서비스의 옵션명은 includeEvents/includeSidechain 이다.
 // events/sidechain 은 라우트가 받는 쿼리 파라미터 이름이고, 라우트가 변환한다.
 test("includeEvents: true 면 이벤트 엔트리가 포함된다", async () => {

@@ -40,6 +40,21 @@ export const config = {
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 
+  /** Host performance sampling. Getters for the same reason as `claudeDir`. */
+  system: {
+    /**
+     * Gap between the two /proc reads a CPU percentage needs, used only when no recent
+     * snapshot is around. Every request pays this as latency, so it stays short.
+     */
+    get sampleMs(): number {
+      return Number(Bun.env.SYSTEM_SAMPLE_MS ?? 400);
+    },
+    /** Serve the same sample to everyone asking within this window. */
+    get cacheMs(): number {
+      return Number(Bun.env.SYSTEM_CACHE_MS ?? 1000);
+    },
+  },
+
   /**
    * Every field here is a getter, for the same reason as `claudeDir`: `bun test` shares
    * one module registry, so a test must be able to change a limit after this module was

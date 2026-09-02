@@ -35,6 +35,51 @@
 { "ok": true, "uptimeMs": 12345, "version": "0.1.0", "claudeDir": "/home/u/.claude" }
 ```
 
+### `GET /api/system` ✅
+
+control-tower 가 도는 **이 기계**의 지금. 응답은 `SystemMetrics` (`src/domain/system.ts`).
+관찰 대상(`CLAUDE_HOME`)이 아니라 호스트 자신을 본다.
+
+| 파라미터 | 기본 | 설명 |
+| --- | --- | --- |
+| `limit` | 20 | 1..100. `topByCpu` · `topByMemory` 각각의 길이 |
+
+목록 봉투(`{ total, offset, limit, items }`)를 쓰지 않는다. 목록 두 개가 딸린 **단건 스냅샷**이지
+목록 응답이 아니다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `supported` | boolean | `/proc` 이 있는 리눅스에서만 true. false 면 나머지는 0/빈 배열이다 |
+| `platform` | string | `process.platform` |
+| `sampledAt` | ISO string | 나중 스냅샷을 뜬 시각 |
+| `intervalMs` | number | CPU 사용률을 잰 구간의 길이 |
+| `uptimeSec` | number | 기기 가동 시간 |
+| `processCount` | number | 살아 있는 프로세스 수 |
+| `cpu` | CpuMetrics | `usagePercent`(0..100, 전체 코어 합) · `coreCount` · `perCorePercent` · `loadAvg` · `temperatureC` |
+| `memory` | MemoryMetrics | `totalBytes` · `usedBytes` · `availableBytes` · `freeBytes` · `buffersBytes` · `cachedBytes` · `usedPercent` · `swapTotalBytes` · `swapUsedBytes` · `swapUsedPercent` |
+| `topByCpu` | ProcessSample[] | CPU 사용률 내림차순 |
+| `topByMemory` | ProcessSample[] | 상주 메모리(RSS) 내림차순 |
+
+`ProcessSample` 은 `pid` · `ppid` · `name` · `command` · `state` · `cpuPercent` · `memoryBytes` ·
+`memoryPercent` 다.
+
+읽는 방법에 걸린 것이 셋 있다.
+
+- **`cpuPercent` 는 코어 1개가 100% 다** (`top` 과 같은 기준). 4코어에서 400 까지 나온다.
+  전체 사용률인 `cpu.usagePercent` 와 자릿수가 다른 것은 의도다 — 기계 전체 대비로 환산하면
+  한 프로세스가 코어 하나를 꽉 잡고 있어도 25% 로 보인다.
+- **`memory.usedBytes` 는 `total - available` 이다** (`free` 와 같은 기준). 커널이 언제든
+  회수하는 페이지 캐시를 사용 중으로 세지 않는다.
+- **`name` 은 커널이 15자에서 자른 `comm` 이다.** 전체 명령줄은 `command` 에 있고, 상위
+  목록에 오른 프로세스에만 채운다. 커널 스레드는 `command` 가 null 이다.
+
+`intervalMs` 는 요청마다 다르다. 직전 표본이 60초 안쪽이면 그것과의 차이로 답하고(추가 대기
+없음), 아니면 `SYSTEM_SAMPLE_MS`(기본 400ms)만큼 기다렸다 두 번째 스냅샷을 뜬다. 같은 표본을
+`SYSTEM_CACHE_MS`(기본 1초) 동안 모든 요청에 돌려준다.
+
+리눅스가 아니면 500 이 아니라 `supported: false` 로 200 을 돌려준다 — 클라이언트가 "측정하지
+않는다" 와 "고장났다" 를 구별할 수 있어야 한다.
+
 ---
 
 ## 세션

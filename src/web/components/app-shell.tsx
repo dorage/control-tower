@@ -7,6 +7,7 @@ const NAV = [
   { to: "/files", segment: "files", label: "파일" },
   { to: "/sessions", segment: "sessions", label: "세션" },
   { to: "/telemetry", segment: "telemetry", label: "텔레메트리" },
+  { to: "/system", segment: "system", label: "성능" },
 ] as const;
 
 const LIVE_LABEL = {

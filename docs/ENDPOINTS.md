@@ -97,8 +97,13 @@
 | --- | --- | --- |
 | `limit` | 200 | 1..1000 |
 | `offset` | 0 | ≥0 |
-| `events` | 0 | 1이면 비대화 이벤트 레코드 포함 |
+| `events` | 0 | 1이면 비대화 레코드(이벤트·`system`·`attachment`) 포함 |
 | `sidechain` | 1 | 0이면 서브에이전트 레코드 제외 |
+
+`events=0`이 남기는 것은 `type`이 `user`·`assistant`인 레코드뿐이다. 훅 출력(`system`)과
+첨부 자리표시(`attachment`)는 실제 트랜스크립트에서 사용자 프롬프트보다 많은 일이 흔해서,
+읽기용 기본값에서 함께 빠진다. `events=1`로 켜면 이벤트는 `kind: "event"`로, 나머지는
+각자의 `kind`(`system`, `attachment`)로 돌아온다.
 
 `Timeline` (`{ sessionId, total, offset, limit, entries: TimelineEntry[] }`). 없으면 404.
 이미 봉투 형태라 목록 봉투로 다시 감싸지 않는다.
@@ -400,6 +405,8 @@ OTLP/HTTP(`http/json`) 수신 엔드포인트. **이 두 경로는 위의 `/api/
 `/sessions`의 필터(`q`, `projectId`)도 마찬가지다. 검색어는 300ms 디바운스 후 `replace`로 반영하므로
 뒤로가기가 글자 단위로 되돌아가지 않는다.
 
-`/sessions/:id`의 토글은 모두 `1`/`0`이며 기본값은 `events=0`, `sidechain=1`, `thinking=1`, `tools=1`이다.
+`/sessions/:id`의 토글은 모두 `1`/`0`이며 기본값은 **네 개 모두 `0`** 이다 — 처음 열면 사람의 프롬프트와
+모델의 답변만 보이고, 사고 과정·툴 입출력·시스템·첨부·서브에이전트는 눌러서 켠다. (API 자체의 `sidechain`
+기본값은 `1`이지만 화면은 항상 값을 명시해 보내므로 어긋나지 않는다.)
 `events`·`sidechain`은 서버 필터라 토글하면 `from`이 사라진다(첫 페이지로 되돌아간다). `from`은 타임라인
 오프셋이고, 해시 `#entry-<n>`은 원본 JSONL 줄 번호로 특정 엔트리에 앵커한다.

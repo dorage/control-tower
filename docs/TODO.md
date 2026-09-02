@@ -162,3 +162,9 @@
 2026-09-01T13:50:01Z NOTE T-024 "환경변수로 빼지 않았다. 값을 브라우저로 내려보낼 API 가 하나 더 필요한데 항목이 label·port 두 칸뿐이다. 사람마다 목록이 달라지는 시점에 /api/quick-links 로 옮긴다"
 2026-09-01T13:50:02Z NOTE T-024 "대시보드 네 갈래(에러·로딩·빈 상태·정상) 모두에 넣었다. /api/stats 가 실패한 상황이야말로 다른 서비스로 건너갈 일이 생기는 때다"
 2026-09-01T13:50:03Z DONE T-024 "FreshRSS(8080) 바로가기 1건으로 시작. quickLinkHref 테스트 4종 추가(166 → 170 pass), bun run check 통과. 번들에 컴포넌트가 실렸는지 실서버(4319)에서 확인. 브라우저 육안 확인은 사용자 몫으로 남긴다"
+2026-09-02T10:05:00Z ADD T-025 P2 web-session "세션 뷰 기본값을 대화만으로" docs/todos/T-025-session-view-dialogue-default.md
+2026-09-02T10:05:01Z START T-025
+2026-09-02T10:05:02Z NOTE T-025 "잡음의 절반은 attachment 였다. 실측(세션 61f3bacc): 전체 229 엔트리 중 event 112, attachment 40. events=0 이 attachment 를 남기고 있었으니 토글을 다 끄는 것만으로는 목적을 달성하지 못한다. 그래서 isConversational 은 그대로 두고 필터용 isDialogue(user/assistant)를 따로 뒀다 - kind 와 블록 모양을 정하는 일과 무엇을 남길지 정하는 일은 다르다"
+2026-09-02T10:05:03Z NOTE T-025 "툴 결과만 든 user 엔트리를 지우는 서버 필터를 만들지 않았다. tools 를 끄면 블록이 전부 사라지고 TimelineEntryView 가 빈 엔트리에 null 을 반환해 이미 없어진다. 실측으로 81 엔트리 중 텍스트가 남는 것은 4 개였다"
+2026-09-02T10:05:04Z NOTE T-025 "API 의 sidechain 기본값은 1 로 남겼다. API 는 전체를 주고 화면은 읽기 편한 것을 주는 것이 각각 자연스럽고, 화면이 네 값을 항상 명시해 보내므로 어긋나지 않는다. ENDPOINTS 에 그 이유를 적었다"
+2026-09-02T10:05:05Z DONE T-025 "네 토글 기본값 끔 + events 범위 확장. 세션 61f3bacc 실측 229 → 77 엔트리, 렌더되는 것은 4 개(유저 프롬프트 1 + 답변 3). 테스트 2종 추가(170 → 172 pass), bun run check 통과. 브라우저 육안 확인은 사용자 몫"

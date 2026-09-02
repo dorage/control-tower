@@ -20,11 +20,12 @@ function toggle(name: string, next: boolean, resetOffset: boolean): Record<strin
 export function SessionDetailPage({ id }: { id: string }) {
   const { search } = useLocation();
 
-  // 기본값: 이벤트는 끔, 나머지는 켬. URL 에 없으면 기본값을 쓴다.
+  // 기본값: 전부 끔 — 사람의 프롬프트와 모델의 답변만 남는다. 나머지는 눌러서 켠다.
+  // URL 에 없으면 기본값을 쓰므로, 켠 상태를 공유하려면 링크에 `=1` 이 실린다.
   const events = search.get("events") === "1";
-  const sidechain = search.get("sidechain") !== "0";
-  const thinking = search.get("thinking") !== "0";
-  const tools = search.get("tools") !== "0";
+  const sidechain = search.get("sidechain") === "1";
+  const thinking = search.get("thinking") === "1";
+  const tools = search.get("tools") === "1";
   const from = Math.max(0, Number.parseInt(search.get("from") ?? "", 10) || 0);
 
   const session = useQuery(() => api.session(id), [id]);
@@ -200,7 +201,7 @@ export function SessionDetailPage({ id }: { id: string }) {
             checked={events}
             onChange={(event) => setParams(toggle("events", event.target.checked, true))}
           />
-          시스템 이벤트
+          시스템·첨부
         </label>
         <label className="toggle">
           <input

@@ -2,16 +2,21 @@ import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { HistoryEntry, ProjectSummary, Stats } from "../../domain/types";
 import { BarBreakdown } from "../components/bar-breakdown";
+import { Meter } from "../components/meter";
 import { QuickLinks } from "../components/quick-links";
 import { SessionCard, SessionCardSkeleton } from "../components/session-list";
 import { StatTile, StatTileRow } from "../components/stat-tile";
 import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { api } from "../lib/api";
-import { compactNumber, dateTime, relativeTime, tildePath } from "../lib/format";
+import { bytes, compactNumber, dateTime, relativeTime, tildePath } from "../lib/format";
 import { Link } from "../lib/router";
 import { useDebouncedCallback } from "../lib/debounce";
 import { useLiveChange } from "../hooks/use-live";
+import { usePoll } from "../hooks/use-poll";
 import { useQuery } from "../hooks/use-query";
+
+/** 시스템 카드만의 폴링 주기. 세션 통계보다 빨리 변하고, /proc 훑기는 싸다. */
+const SYSTEM_POLL_MS = 5000;
 
 /**
  * A card that owns its own loading and error state.
@@ -45,6 +50,55 @@ function Card<T>({
         <Spinner label={`${title} 불러오는 중`} />
       )}
     </section>
+  );
+}
+
+/**
+ * 이 기기의 지금. 세션 통계와 달리 초 단위로 변하므로 스스로 폴링한다.
+ *
+ * 목록은 받지 않는다(limit=1) - 대시보드에서 필요한 것은 두 게이지뿐이고, 상위 프로세스는
+ * /system 화면의 일이다.
+ */
+function SystemCard({ nonce }: { nonce: number }) {
+  const [tick, setTick] = useState(0);
+  const state = useQuery(() => api.system({ limit: 1 }), [nonce, tick]);
+  usePoll(() => setTick((value) => value + 1), SYSTEM_POLL_MS);
+
+  return (
+    <Card
+      title="시스템"
+      state={state}
+      action={
+        <Link to="/system" className="dash-card__link">
+          자세히 →
+        </Link>
+      }
+    >
+      {(data) =>
+        !data.supported ? (
+          <p className="dash-card__empty">
+            리눅스(/proc)에서만 측정합니다. 지금은 {data.platform} 입니다.
+          </p>
+        ) : (
+          <>
+            <Meter
+              label={`CPU · 코어 ${data.cpu.coreCount}개`}
+              percent={data.cpu.usagePercent}
+              value={
+                data.cpu.temperatureC !== null
+                  ? `부하 ${data.cpu.loadAvg[0].toFixed(2)} · ${data.cpu.temperatureC.toFixed(1)}°C`
+                  : `부하 ${data.cpu.loadAvg[0].toFixed(2)}`
+              }
+            />
+            <Meter
+              label="메모리"
+              percent={data.memory.usedPercent}
+              value={`${bytes(data.memory.usedBytes)} / ${bytes(data.memory.totalBytes)}`}
+            />
+          </>
+        )
+      }
+    </Card>
   );
 }
 
@@ -179,6 +233,8 @@ export function DashboardPage() {
       </StatTileRow>
 
       <div className="dash-grid">
+        <SystemCard nonce={nonce} />
+
         <Card
           title="최근 세션"
           state={sessions}

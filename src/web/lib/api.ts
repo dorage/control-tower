@@ -9,6 +9,7 @@ import type {
   Stats,
   Timeline,
 } from "../../domain/types";
+import type { SystemMetrics } from "../../domain/system";
 import type { Bucket, GroupBy, TelemetryStatus } from "../../domain/telemetry";
 
 export interface Page<T> {
@@ -123,6 +124,9 @@ export const api = {
     request<{ ok: boolean; uptimeMs: number; version: string; claudeDir: string }>("/api/health"),
 
   stats: () => request<Stats>("/api/stats"),
+
+  system: (opts: { limit?: number } = {}) =>
+    request<SystemMetrics>(`/api/system${query({ ...opts })}`),
 
   projects: (opts: { limit?: number; offset?: number } = {}) =>
     request<Page<ProjectSummary>>(`/api/projects${query({ ...opts })}`),

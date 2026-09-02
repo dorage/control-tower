@@ -1871,3 +1871,243 @@ a.stat-tile:hover {
 .telemetry-setup__note {
   color: var(--text-faint);
 }
+
+/* --------------------------------------------------------- 성능 화면 (T-026) */
+
+.system__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.system__note {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* 게이지. 분모가 언제나 100 이라 막대 분포(bar-breakdown)와 다른 컴포넌트다. */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.meter--compact {
+  margin-bottom: 8px;
+}
+
+.meter__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.meter__label {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meter__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter__detail {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.meter__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  /* 폴링 간격보다 짧게. 값이 바뀌는 것이 보이되 늘어지지 않는다. */
+  transition: width 300ms ease-out;
+}
+
+.meter__fill--ok {
+  background: var(--accent);
+}
+
+.meter__fill--warn {
+  background: var(--warning);
+}
+
+.meter__fill--danger {
+  background: var(--danger);
+}
+
+/* 코어별 세로 막대. 코어가 4개든 64개든 줄바꿈으로 흘린다. */
+.cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cores__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 18px;
+}
+
+.cores__track {
+  position: relative;
+  width: 100%;
+  height: 34px;
+  border-radius: 3px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.cores__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: height 300ms ease-out;
+}
+
+.cores__fill--ok {
+  background: var(--accent);
+}
+
+.cores__fill--warn {
+  background: var(--warning);
+}
+
+.cores__fill--danger {
+  background: var(--danger);
+}
+
+.cores__label {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 메모리 세부 수치. 게이지로 답이 안 되는 것들만 남긴다. */
+.system__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px 12px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.system__facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.system__facts dt {
+  color: var(--text-muted);
+}
+
+.system__facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상위 프로세스. 행 자체가 막대다. */
+.proc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.proc-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.proc-row__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  border-radius: 4px;
+  opacity: 0.16;
+  transition: width 300ms ease-out;
+}
+
+.proc-row__bar--cpu {
+  background: var(--accent);
+}
+
+.proc-row__bar--memory {
+  background: var(--success);
+}
+
+.proc-row__name,
+.proc-row__pid,
+.proc-row__value {
+  position: relative;
+  z-index: 1;
+}
+
+.proc-row__name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.proc-row__comm {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+/* 전체 명령줄은 자리가 남을 때만 보인다. 잘려도 title 에 전문이 있다. */
+.proc-row__cmd {
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proc-row__pid {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.proc-row__value {
+  min-width: 96px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.proc-row__pct {
+  margin-left: 6px;
+  color: var(--text-faint);
+}

@@ -6,8 +6,12 @@
 # 저장소 안의 파일을 그대로 실행하면 자기 자신을 갱신하는 스크립트가 된다.
 # 이 파일을 고쳤으면 docs/README.md 의 "자동 배포" 절을 따라 다시 복사한다.
 #
-# systemd 타이머(control-tower-deploy.timer)가 1분마다 부른다. 출력은 journald 로 간다:
-#   journalctl --user -u control-tower-deploy -n 50
+# systemd 타이머(control-tower-deploy.timer)가 1분마다 부른다. 확인은 두 가지다:
+#   systemctl --user status control-tower-deploy      # 가장 최근 실행
+#   tail ~/.cache/control-tower-deploy.log            # 실제로 배포한 기록만
+#
+# 이 기계의 저널은 휘발성이라(/var/log/journal 없음) `journalctl --user` 로는 아무것도 나오지
+# 않는다. 그래서 배포 기록만 따로 파일에 남긴다.
 set -euo pipefail
 
 REPO=${CT_REPO:-/home/dorage/workspace/control-tower}
@@ -15,15 +19,24 @@ UNIT=${CT_UNIT:-control-tower.service}
 HEALTH=${CT_HEALTH:-http://localhost:4317/api/health}
 # 검사에 실패한 커밋을 적어 둔다. 같은 커밋을 1분마다 다시 받아 검사하지 않기 위해서다.
 FAILED_MARK=${CT_FAILED_MARK:-$HOME/.cache/control-tower-deploy.failed}
+LOG_FILE=${CT_LOG:-$HOME/.cache/control-tower-deploy.log}
 
 export PATH="$HOME/.bun/bin:$PATH"
 cd "$REPO"
+mkdir -p "$(dirname "$LOG_FILE")"
 
-log() { echo "[deploy] $*"; }
+# 넘어가는 경로용. 1분마다 찍히므로 파일에는 남기지 않는다.
+skip() { echo "[deploy] $*"; }
+# 실제로 무언가 한 경우용. 파일에도 남는다.
+log() { echo "$(date -Is) [deploy] $*" | tee -a "$LOG_FILE"; }
 
 # 사람이 손대고 있는 중이면 아무것도 하지 않는다. 자동 배포가 작업을 덮지 않게.
-if [ -n "$(git status --porcelain)" ]; then
-  log "작업 트리가 깨끗하지 않다. 넘어간다."
+#
+# 추적되지 않는 파일은 세지 않는다(-uno). 도구가 흘린 부산물 하나 때문에 배포가 영영 멈추면
+# 안 된다. 받아온 커밋이 그런 파일과 부딪히면 아래 merge 가 실패하므로 안전망은 남는다.
+dirty=$(git status --porcelain --untracked-files=no)
+if [ -n "$dirty" ]; then
+  skip "추적 중인 파일이 수정돼 있다. 넘어간다: $(echo "$dirty" | head -3 | tr '\n' ' ')"
   exit 0
 fi
 

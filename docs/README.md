@@ -93,10 +93,15 @@ systemctl --user enable --now control-tower-deploy.timer
 
 ```bash
 systemctl --user list-timers control-tower-deploy.timer
-journalctl --user -u control-tower-deploy -n 50   # 배포 기록
+systemctl --user status control-tower-deploy      # 가장 최근 실행과 그 이유
+tail ~/.cache/control-tower-deploy.log            # 실제로 배포한 기록만
 systemctl --user start control-tower-deploy       # 기다리지 않고 지금 배포
 systemctl --user disable --now control-tower-deploy.timer   # 자동 배포 끄기
 ```
+
+**이 기계에서 `journalctl --user` 는 아무것도 보여주지 않는다.** `/var/log/journal` 이 없어
+유저 저널이 휘발성이기 때문이다. 그래서 배포 기록은 따로 파일에 남긴다. 1분마다 찍히는
+"넘어간다" 류는 파일에 남기지 않고 `systemctl --user status` 의 마지막 줄로만 본다.
 
 ## 텔레메트리 수집 (선택)
 

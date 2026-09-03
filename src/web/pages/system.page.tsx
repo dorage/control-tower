@@ -37,7 +37,16 @@ export function SystemPage() {
   const refresh = useCallback(() => setNonce((value) => value + 1), []);
 
   const state = useQuery(() => api.system({ limit: TOP }), [nonce]);
-  usePoll(refresh, auto ? POLL_MS : null);
+
+  /**
+   * 아직 답이 안 온 요청을 앞지르지 않는다.
+   *
+   * `useQuery` 는 다시 실행할 때 `error` 를 지운다. 응답이 폴링 주기보다 느리면(서버가 답을
+   * 못 주는 상황이 정확히 그렇다) 매번 에러가 지워져 화면이 영원히 스피너에 머문다.
+   */
+  usePoll(() => {
+    if (!state.loading) refresh();
+  }, auto ? POLL_MS : null);
 
   if (state.error) {
     return (

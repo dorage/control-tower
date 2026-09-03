@@ -7,6 +7,10 @@ import { useEffect, useRef } from "react";
  * 같은 이유다 — 보이지도 않는 화면 때문에 서버가 /proc 를 훑고 있을 이유가 없다.
  *
  * callback 은 ref 로만 읽으므로 렌더마다 새 함수를 넣어도 타이머를 다시 걸지 않는다.
+ *
+ * **진행 중인 요청을 앞지르지 않는 것은 호출자 몫이다.** 응답이 주기보다 느릴 때 그냥 다시
+ * 부르면 `useQuery` 가 매번 `error` 를 지워, 실패가 화면에 영영 드러나지 않고 스피너만 돈다.
+ * `if (!state.loading) refresh()` 로 감싼다.
  */
 export function usePoll(callback: () => void, intervalMs: number | null): void {
   const callbackRef = useRef(callback);

@@ -62,7 +62,10 @@ function Card<T>({
 function SystemCard({ nonce }: { nonce: number }) {
   const [tick, setTick] = useState(0);
   const state = useQuery(() => api.system({ limit: 1 }), [nonce, tick]);
-  usePoll(() => setTick((value) => value + 1), SYSTEM_POLL_MS);
+  // 아직 답이 안 온 요청을 앞지르지 않는다 - 앞지르면 실패가 스피너에 가려진다.
+  usePoll(() => {
+    if (!state.loading) setTick((value) => value + 1);
+  }, SYSTEM_POLL_MS);
 
   return (
     <Card

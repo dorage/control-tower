@@ -9,7 +9,8 @@ control-tower/
 ├── index.ts                        ✅        서버 진입점 (Bun.serve 기동)
 ├── package.json                    ✅        scripts: dev / start(둘 다 --hot) / start:prod / typecheck / test / check / check:docs
 ├── scripts/
-│   └── check-docs.ts               ✅        문서-코드 일치 검사 (휴리스틱, 종료코드 0/1)
+│   ├── check-docs.ts               ✅        문서-코드 일치 검사 (휴리스틱, 종료코드 0/1)
+│   └── deploy.sh                   ✅        origin/main 추적 배포 (T-027). ~/.local/bin 사본이 실행된다
 ├── tsconfig.json                   ✅        lib: ESNext + DOM (브라우저 코드용)
 ├── CLAUDE.md                       ✅        Bun 사용 규약 (에이전트용)
 ├── README.md                       ✅

@@ -46,6 +46,63 @@ bunx tsc --noEmit  # 타입 체크만
 
 기본 주소: `http://localhost:4317`
 
+## 자동 배포
+
+`origin/main` 이 움직이면 1분 안에 받아서 검사하고 서비스를 다시 띄운다. systemd 유저 타이머가
+1분마다 `git fetch` 한 번을 하는 것이 전부다. 밖으로 여는 포트가 없고, 저장소가 공개라
+자격증명도 필요 없다.
+
+구성은 넷이다.
+
+- `control-tower.service` — 서버 본체. **`--hot` 을 쓰지 않는다.** `--hot` 은 이미 로드된
+  파일의 변경만 따라가서, 브랜치 머지처럼 파일이 새로 생기는 변경 뒤에는 라우트는 등록됐는데
+  핸들러가 돌지 않는 상태가 된다(2026-09-03 실측). 갱신은 재시작으로 한다
+- `control-tower-deploy.timer` — 1분마다 아래 서비스를 깨운다
+- `control-tower-deploy.service` — `Type=oneshot`. 배포 스크립트를 한 번 실행한다
+- `~/.local/bin/control-tower-deploy` — `scripts/deploy.sh` 의 **사본**
+
+스크립트를 저장소 밖에서 실행하는 이유는, 저장소 안의 파일을 그대로 돌리면 배포가 자기 자신을
+갱신하는 셈이 되기 때문이다. `scripts/deploy.sh` 를 고쳤으면 사본을 다시 만든다.
+
+### 설치
+
+```bash
+cp scripts/deploy.sh ~/.local/bin/control-tower-deploy
+chmod +x ~/.local/bin/control-tower-deploy
+systemctl --user daemon-reload
+systemctl --user enable --now control-tower-deploy.timer
+```
+
+유닛 파일은 `~/.config/systemd/user/` 에 있다. 기계를 새로 세운다면 `loginctl enable-linger`
+까지 해 둬야 로그아웃 뒤에도 돈다.
+
+### 안전망
+
+배포는 네 군데서 멈춘다.
+
+- 작업 트리가 깨끗하지 않으면 아무것도 하지 않는다. 자동 배포가 사람 작업을 덮지 않는다
+- fast-forward 가 아니면 합치지 않고 멈춰 사람을 부른다
+- `bun run check` 를 통과해야 재시작한다. 실패하면 직전 커밋으로 되돌리고, **그 커밋 SHA 를
+  적어 둬 1분마다 같은 실패를 반복하지 않는다**(`~/.cache/control-tower-deploy.failed`)
+- 재시작 후 20초 안에 `/api/health` 가 살아나지 않으면 직전 커밋으로 되돌려 다시 띄운다
+
+헬스체크가 `/api/health` 하나만 보는 것은 알고 있는 한계다. 특정 API 만 죽은 상태는 잡지
+못한다. 다만 배포마다 프로세스를 새로 띄우므로 `--hot` 이 만들던 그 상태는 생기지 않는다.
+
+### 확인과 끄기
+
+```bash
+systemctl --user list-timers control-tower-deploy.timer
+systemctl --user status control-tower-deploy      # 가장 최근 실행과 그 이유
+tail ~/.cache/control-tower-deploy.log            # 실제로 배포한 기록만
+systemctl --user start control-tower-deploy       # 기다리지 않고 지금 배포
+systemctl --user disable --now control-tower-deploy.timer   # 자동 배포 끄기
+```
+
+**이 기계에서 `journalctl --user` 는 아무것도 보여주지 않는다.** `/var/log/journal` 이 없어
+유저 저널이 휘발성이기 때문이다. 그래서 배포 기록은 따로 파일에 남긴다. 1분마다 찍히는
+"넘어간다" 류는 파일에 남기지 않고 `systemctl --user status` 의 마지막 줄로만 본다.
+
 ## 텔레메트리 수집 (선택)
 
 Claude Code 의 OpenTelemetry 내보내기를 control-tower 가 직접 받는다. 켜면 트랜스크립트로는 알 수 없는 것들이 보인다 — 실제 달러 비용, 그리고 `query_source` 별 토큰 귀속(실제 작업 대 세션 제목 생성 같은 오버헤드).

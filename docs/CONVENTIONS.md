@@ -160,8 +160,8 @@ route  →  service  →  repository  →  disk
 - 트랜스크립트에서 온 JSON 문자열(툴 입력 등)은 서버가 `MAX_BLOCK_CHARS`에서 잘랐을 수 있다. **`JSON.parse` 실패는 정상 경로다** — 요약을 포기하고 넘어가되 화면을 죽이지 않는다.
 - 카드처럼 통째로 링크인 요소 안의 보조 동작(복사, 필터)은 `<button>`으로 두고 핸들러에서 `preventDefault()`와 `stopPropagation()`을 **둘 다** 부른다. 하나만으로는 링크가 함께 발동한다.
 - CSS는 `src/web/styles.css` 한 파일 + CSS 커스텀 프로퍼티 토큰. CSS-in-JS나 Tailwind를 도입하지 않는다.
-- 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다. hex 리터럴은 `:root`와 `@media (prefers-color-scheme: dark)` 블록 안에만 존재한다.
-- 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.
+- 라이트/다크 모두 대응한다. 색은 항상 토큰(`var(--...)`)으로 쓴다. hex 리터럴은 `:root`와 `@media (prefers-color-scheme: dark)` 블록 안에만 존재한다. **예외는 코드 테마 팔레트 하나다**(아래 10.2).
+- 확정된 색 토큰: `--bg` `--bg-subtle` `--bg-raised` `--border` `--border-strong` `--text` `--text-muted` `--text-faint` `--accent` `--accent-soft` `--danger` `--danger-soft` `--success` `--warning`. 코드 색 토큰: `--code-bg` `--code-fg` `--code-comment` `--code-string` `--code-number` `--code-keyword` `--code-type` `--code-func` `--code-property` `--code-tag` `--code-punct`. 그 외 토큰: `--mono` `--sans` `--radius` `--gap` `--sidebar-w` `--header-h`.
 - 클래스 네이밍은 BEM 축약형 `블록__요소--변형` (예: `tree__row--active`, `editor__toolbar`).
 - 로딩/빈 상태/에러는 화면마다 새로 그리지 않고 `components/ui.tsx`의 `Spinner`/`EmptyState`/`ErrorBox`를 쓴다.
 - 사용자 입력에서 온 문자열을 `dangerouslySetInnerHTML`로 넣지 않는다. **어디에서도 쓰지 않는다.** 마크다운은 `lib/markdown.ts`가 AST 로 파싱하고 `components/markdown-preview.tsx`가 React 엘리먼트로 만든다. HTML 문자열을 거치지 않으므로 XSS 위험이 구조적으로 없고 sanitizer 도 필요 없다.
@@ -186,6 +186,18 @@ route  →  service  →  repository  →  disk
 - 분석 화면은 자동 갱신하지 않는다. 읽는 중에 다시 그려지면 방해다.
 - **예외는 성능 화면 하나다.** 호스트의 CPU·메모리는 초 단위로 변해서 1분 전 값이 의미가 없다. SSE 가 아니라 폴링으로 받고(`hooks/use-poll.ts`), `/system` 은 3초·대시보드 카드는 5초다. 규칙은 그대로 지킨다 — **탭이 숨겨지면 타이머를 끄고, 돌아오면 즉시 한 번 부른 뒤 다시 건다.** 사용자가 끌 수 있는 토글을 화면에 둔다.
 - **폴링하는 화면의 값은 서버에서 묶는다.** 탭 두 개가 각자 3초로 물어봐도 서버는 같은 표본을 돌려준다(`SYSTEM_CACHE_MS`). 클라이언트마다 /proc 를 다시 훑게 두지 않는다.
+
+### 10.2 코드 색칠 (T-030)
+
+- **하이라이터 라이브러리를 추가하지 않는다.** `lib/highlight.ts` 가 언어별 규칙표로 토큰을 만든다. 마크다운 파서와 같은 이유다 — 필요한 범위가 좁고(서버가 알아보는 확장자 열두 개), 목적이 "읽기 편한 색"이지 "옳은 구문 트리"가 아니다.
+- **하이라이터는 HTML 문자열을 만들지 않는다.** 토큰 배열을 돌려주고 `components/code-block.tsx` 가 React 엘리먼트로 만든다. `dangerouslySetInnerHTML` 금지 규칙은 여기서도 그대로다.
+- **불변식: 토큰 값을 이어 붙이면 입력과 글자 하나까지 같다.** 색이 틀리는 것은 버그지만 글자가 사라지는 것은 사고다. 새 언어를 더할 때 이 불변식 테스트에 표본을 함께 넣는다.
+- 모르는 언어·닫히지 않은 주석·잘린 파일은 정상 경로다. 색을 포기하고 원문을 남긴다.
+- 언어별 규칙 목록은 **순서가 의미**다. 줄머리(`^`)에 걸린 규칙을 쓰는 문법(YAML·TOML)은 개행과 들여쓰기를 따로 먹어야 한다 — `\s+` 로 한 번에 삼키면 들여쓰기 뒤가 더 이상 줄머리가 아니다.
+- 상한(`HIGHLIGHT_MAX_CHARS`)을 넘는 본문은 색칠하지 않는다. 토큰 하나가 DOM 노드 하나이고, 뷰어가 멈추는 것보다 색이 없는 편이 낫다.
+- **테마 팔레트는 `[data-code-theme="<id>"]` 블록에 hex 로 적는다.** hex 를 `:root`와 다크 미디어 블록 안에만 두는 규칙의 유일한 예외다 — 팔레트는 화면 색이 아니라 사용자가 고르는 값이라 토큰으로 바꿔 쓸 수 없다. `:root` 가 아니라 속성 선택자인 이유는 설정 화면의 미리보기 카드에도 같은 속성을 걸기 위해서다.
+- 색은 CSS 가 정하고 JS 는 이름만 옮긴다. `lib/settings.ts` 가 `document.documentElement` 의 `data-code-theme` 를 세우고, `main.tsx` 가 첫 렌더 전에 한 번 적용한다.
+- **`textarea` 는 색칠하지 않는다.** 색칠한 레이어를 뒤에 겹치는 방식은 스크롤·줄바꿈·글꼴을 계속 맞춰야 하고, 한글 조합과 실행 취소 스택을 지키는 편집기 위에 얹을 이유가 없다.
 
 ## 11. 테스트
 

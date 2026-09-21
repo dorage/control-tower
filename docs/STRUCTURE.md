@@ -88,7 +88,7 @@ control-tower/
         ├── pug-frame-host.ts       ✅        sandbox iframe 안에서 도는 @pug-frame/canvas 호스트. 메인 번들 밖 (T-029)
         ├── css.d.ts                ✅        CSS 부수효과 import 선언
         ├── app.tsx                 ✅        라우트 → 화면 매핑 + document.title
-        ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
+        ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 코드 테마 팔레트 · 컴포넌트 스타일
         ├── lib/
         │   ├── debounce.ts         ✅        useDebouncedCallback (실시간 갱신 묶기)
         │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·시스템·히스토리·텔레메트리
@@ -98,6 +98,10 @@ control-tower/
         │   ├── format.test.ts       ✅
         │   ├── markdown.ts         ✅        마크다운 → AST
         │   ├── markdown.test.ts     ✅
+        │   ├── highlight.ts        ✅        코드 → 토큰. 언어별 규칙표와 스캐너 (T-030)
+        │   ├── highlight.test.ts    ✅        원문 보존 불변식 · 언어별 색 배정
+        │   ├── settings.ts         ✅        코드 테마 선택(localStorage + useSyncExternalStore) (T-030)
+        │   ├── settings.test.ts     ✅        테마 목록 무결성 · 저장값 검증
         │   ├── editing.ts          ✅        목록 이어쓰기 · 들여쓰기/내어쓰기 (순수 문자열 연산)
         │   ├── editing.test.ts      ✅
         │   ├── pug-frame-message.ts ✅       미리보기 ↔ pug-frame 호스트 postMessage 규약과 파서. 양쪽 번들이 같이 쓴다 (T-029)
@@ -110,10 +114,11 @@ control-tower/
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다
-        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). /files 와 /workspace 가 공유 (T-028)
+        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다 (T-028, T-030)
         │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너
-        │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. root 없이도 쓸 수 있다. ```pug-frame 은 pug-frame-block 으로
+        │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. ```pug-frame 은 pug-frame-block, 나머지 코드는 code-block 으로
         │   ├── pug-frame-block.tsx ✅        ```pug-frame 블록 → sandbox iframe(/pug-frame) + 원문 토글 (T-029)
+        │   ├── code-block.tsx      ✅        토큰 → span. plain 은 span 없이 문자열로 (T-030)
         │   ├── session-list.tsx    ✅        세션 카드(compact 지원)·날짜 구분선·복사 버튼
         │   ├── timeline.tsx        ✅        엔트리·블록 렌더. 접힌 블록은 펼치기 전엔 안 그린다
         │   ├── timeline.test.ts    ✅        toolSummary (잘린 JSON 방어)
@@ -131,6 +136,7 @@ control-tower/
             ├── workspace.page.tsx      ✅        저장소·체크아웃 고르기 + 체크아웃 안의 트리 / 뷰어 (T-028)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
             ├── system.page.tsx         ✅        CPU·메모리 게이지 + 상위 프로세스 20 (T-026)
+            ├── settings.page.tsx       ✅        코드 색 테마 고르기. 카드마다 그 테마로 미리보기 (T-030)
             ├── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
             └── telemetry.page.tsx      ✅        토큰·비용 분포/추이/지연 + 미수집 설정 안내
 ```

@@ -29,7 +29,8 @@ control-tower/
     ├── domain/
     │   ├── types.ts                ✅        디스크 원본 타입 + 도메인 타입
     │   ├── telemetry.ts            ✅        OTLP 원본 타입 + 시리즈 키·조회 타입
-    │   └── system.ts               ✅        호스트 성능 지표 타입 (T-026)
+    │   ├── system.ts               ✅        호스트 성능 지표 타입 (T-026)
+    │   └── workspace.ts            ✅        git 저장소·체크아웃 타입 (T-028)
     ├── db/
     │   └── telemetry.db.ts         ✅        bun:sqlite 핸들·스키마·PRAGMA (auto_vacuum=incremental)
     ├── lib/                                  도메인 지식 없는 순수 유틸
@@ -44,7 +45,9 @@ control-tower/
     │   ├── telemetry.repository.ts ✅        텔레메트리 insert·집계 조회·롤업·보존·크기 차단기
     │   ├── system.repository.ts    ✅        /proc 읽기 + 순수 파서 (CPU·메모리·프로세스)
     │   ├── system.repository.test.ts ✅      실측 /proc 문자열 파싱 · 방어 파서 · 실제 /proc 스모크
-    │   └── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
+    │   ├── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
+    │   ├── git.repository.ts       ✅        `.git` 직접 읽기(HEAD·refs·packed-refs·worktrees). git 명령을 띄우지 않는다 (T-028)
+    │   └── git.repository.test.ts  ✅        실제 git 으로 만든 저장소·worktree·잠금·prunable·깨진 HEAD
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
     │   ├── live.service.ts         ✅
@@ -59,8 +62,10 @@ control-tower/
     │   ├── telemetry.service.test.ts ✅      파싱·가드·롤업 멱등·크기 차단기 테스트
     │   ├── system.service.ts       ✅        스냅샷 두 장의 차이 → 지표, 표본 캐시 (T-026)
     │   ├── system.service.test.ts   ✅       buildMetrics 순수 계산 · 정렬 · 경계
-    │   ├── fs.service.ts           ✅        resolvePath · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
-    │   └── fs.service.test.ts       ✅        경로 탈출 방어 · 저장 충돌·원자성 테스트
+    │   ├── fs.service.ts           ✅        resolvePath · locate · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
+    │   ├── fs.service.test.ts       ✅       경로 탈출 방어 · 저장 충돌·원자성 · locate 테스트
+    │   ├── workspace.service.ts    ✅        루트 탐색(깊이 2) → 저장소 묶기 · 체크아웃을 파일 API 루트에 매핑 (T-028)
+    │   └── workspace.service.test.ts ✅      실제 git 픽스처로 탐색 규칙·루트 밖 체크아웃 테스트
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
     │   ├── index.ts                ✅        라우트 컴포지션 (여기서만 조합)
     │   ├── health.route.ts         ✅        /api/health
@@ -72,7 +77,8 @@ control-tower/
     │   ├── events.route.ts         ✅        /api/events (SSE)
     │   ├── telemetry.route.ts      ✅        /api/telemetry/status · tokens · cost · timeseries · latency
     │   ├── otlp.route.ts           ✅        POST /v1/metrics · /v1/logs (OTLP 수신, /api 규약 예외)
-    │   └── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
+    │   ├── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
+    │   └── workspace.route.ts      ✅        /api/workspace/repos (T-028)
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        스크립트·스타일 연결
         ├── main.tsx                ✅        React 루트 마운트
@@ -97,7 +103,8 @@ control-tower/
         │   └── use-poll.ts         ✅        탭이 보일 때만 도는 폴링 (T-026)
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
-        │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작
+        │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다
+        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). /files 와 /workspace 가 공유 (T-028)
         │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너
         │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. root 없이도 쓸 수 있다
         │   ├── session-list.tsx    ✅        세션 카드(compact 지원)·날짜 구분선·복사 버튼
@@ -113,7 +120,8 @@ control-tower/
         │   └── ui.tsx              ✅        Spinner/EmptyState/ErrorBox/Badge/Button
         └── pages/
             ├── dashboard.page.tsx      ✅        바로가기 줄 + 타일 + 시스템 카드 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
-            ├── files.page.tsx          ✅        좌 트리 / 우 뷰어(미리보기·원문·편집 3탭)
+            ├── files.page.tsx          ✅        루트 고르기 + 좌 트리 / 우 뷰어(file-view.tsx)
+            ├── workspace.page.tsx      ✅        저장소·체크아웃 고르기 + 체크아웃 안의 트리 / 뷰어 (T-028)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
             ├── system.page.tsx         ✅        CPU·메모리 게이지 + 상위 프로세스 20 (T-026)
             ├── session-detail.page.tsx ✅        헤더 + 필터 토글 4종 + 타임라인 페이지네이션
@@ -141,6 +149,7 @@ routes  →  services  →  repositories  →  디스크
 | 실행 중 세션 | `$CLAUDE_HOME/sessions/<pid>.json` | `live-session.repository.ts` |
 | 프롬프트 히스토리 | `$CLAUDE_HOME/history.jsonl` | `history.repository.ts` |
 | 워크스페이스 파일 | `$WORKSPACE_ROOTS`의 각 루트 | `fs.repository.ts` (T-005) |
+| git 메타데이터 | `<repo>/.git/HEAD` · `refs` · `packed-refs` · `worktrees/*` | `git.repository.ts` (T-028) |
 | 호스트 성능 | `/proc/stat` · `/proc/meminfo` · `/proc/<pid>/stat` · `/proc/loadavg` · `/proc/uptime` · `/sys/class/thermal/thermal_zone0/temp` | `system.repository.ts` (T-026) |
 
 `projectId`는 절대경로를 `/` → `-`로 치환한 형태다(`-home-dorage-workspace-app`). 역변환은 손실이 있어 best-effort이며, 트랜스크립트의 `cwd` 필드가 있으면 그쪽을 우선한다.

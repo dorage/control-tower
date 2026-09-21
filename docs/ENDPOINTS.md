@@ -348,6 +348,92 @@ data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSes
 
 ---
 
+## 워크스페이스
+
+### `GET /api/workspace/repos` ✅
+
+워크스페이스 루트 아래의 git 저장소. 같은 저장소의 작업 트리를 한 항목으로 묶어 준다.
+파라미터가 없다. 저장소는 수십 개 규모라 자를 이유가 없다.
+
+```json
+{
+  "total": 2,
+  "offset": 0,
+  "limit": 2,
+  "items": [
+    {
+      "id": "control-tower",
+      "name": "control-tower",
+      "path": "/home/u/workspace/control-tower",
+      "checkouts": [
+        {
+          "id": "main",
+          "kind": "main",
+          "name": "main",
+          "path": "/home/u/workspace/control-tower",
+          "branch": "main",
+          "head": "0c376001e0b9a2f1c3d4e5f60718293a4b5c6d7e",
+          "locked": null,
+          "root": "workspace",
+          "relPath": "control-tower"
+        },
+        {
+          "id": "markdown-editor",
+          "kind": "linked",
+          "name": "markdown-editor",
+          "path": "/home/u/workspace/control-tower/.claude/worktrees/markdown-editor",
+          "branch": "worktree-markdown-editor",
+          "head": "3bc9d21f1e2d3c4b5a69788796a5b4c3d2e1f009",
+          "locked": "claude session (pid 1234)",
+          "root": "workspace",
+          "relPath": "control-tower/.claude/worktrees/markdown-editor"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `id` | string | URL 용 slug. 이름이 겹치면 `-2` 가 붙는다 |
+| `name` | string | main 작업 트리 디렉터리 이름 |
+| `path` | string | main 작업 트리 절대경로(심볼릭 링크 해석됨) |
+| `checkouts` | WorkspaceCheckout[] | main 이 첫 번째, 이어서 linked 가 이름순 |
+
+`WorkspaceCheckout` (`src/domain/workspace.ts`):
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `id` | string | 저장소 안에서 유일. main 은 `"main"`, linked 는 `.git/worktrees/<name>` 의 이름. 겹치면 `-2` |
+| `kind` | `"main"` \| `"linked"` | **작업 트리 구분이지 브랜치가 아니다.** main 작업 트리가 `develop` 을 보고 있을 수도 있다 |
+| `name` | string | main 은 `"main"`, linked 는 git 이 붙인 이름(보통 디렉터리 basename) |
+| `path` | string | 절대경로, 심볼릭 링크 해석됨 |
+| `branch` | string \| null | detached HEAD 면 `null` |
+| `head` | string \| null | HEAD 커밋 40자 SHA. 못 풀면 `null`(빈 저장소 등) |
+| `locked` | string \| null | `git worktree lock` 사유. 안 잠겼으면 `null`, 사유 없이 잠겼으면 `""` |
+| `root` | string \| null | 이 체크아웃을 담는 파일 API 루트 id. 루트 밖이면 `null` |
+| `relPath` | string \| null | 루트 기준 상대경로. `root` 가 `null` 이면 `null` |
+
+탐색 규칙:
+
+- 루트의 직계와 그 아래 **한 단계까지**(깊이 2) 본다. `~/workspace/<묶음>/<프로젝트>` 까지가 실제로 쓰이는 형태이고, 더 내려가면 저장소 안의 `vendor/*` 까지 훑는다.
+- `.` 으로 시작하는 디렉터리와 `node_modules` 는 건너뛴다.
+- **`.git` 이 디렉터리일 때만 저장소다.** `.git` 이 파일이면 linked 작업 트리이거나 서브모듈이라 저장소로 잡지 않고, 그 아래로 내려가지도 않는다.
+- 디렉터리가 사라진 worktree(prunable)는 목록에서 빠진다.
+- 루트가 겹쳐 같은 저장소를 두 번 만나면 한 번만 싣는다.
+- 권한 오류로 읽을 수 없는 디렉터리는 그 가지만 포기하고 나머지를 돌려준다.
+
+**`git` 명령을 띄우지 않는다.** HEAD·브랜치·worktree 목록·잠금 사유는 전부 `.git` 아래 작은 텍스트 파일이고
+형식은 gitrepository-layout(5) 로 공개돼 있다. 화면을 열 때마다 도는 경로에서 프로세스를 띄우지 않는다는
+규칙(CONVENTIONS §1)을 따른다. 브랜치 SHA 는 `refs/heads/<branch>` 느슨한 파일에서, 없으면 `packed-refs` 에서 읽는다.
+
+**파일은 이 API 로 읽지 않는다.** 화면은 `root` 와 `relPath` 를 받아 기존 `/api/fs/*` 로 연다.
+경로 관문(`resolvePath`)을 우회하는 길을 늘리지 않기 위해서다. 그래서 어느 루트에도 담기지 않은
+체크아웃은 목록에 나오되 `root: null` 이고, 화면은 열 수 없다고 안내한다.
+
+---
+
 ## 텔레메트리
 
 Claude Code 의 OpenTelemetry 내보내기를 직접 받는다. 수집을 켜는 방법은 `docs/README.md` 를 본다.

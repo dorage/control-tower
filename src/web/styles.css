@@ -2129,3 +2129,46 @@ a.stat-tile:hover {
   margin-left: 6px;
   color: var(--text-faint);
 }
+
+/* pug-frame 블록 - 격리된 iframe 안에서 그린다 (T-029) */
+
+.md__pug-frame {
+  margin: 0.8em 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.md__pug-frame-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.md__pug-frame-label {
+  font-family: var(--mono);
+}
+
+.md__pug-frame-source {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+/* 높이는 사용자가 아래 모서리를 끌어 바꿀 수 있다. iframe 은 그 상자를 채운다. */
+.md__pug-frame-view {
+  display: block;
+  width: 100%;
+  height: 480px;
+  min-height: 160px;
+  border: none;
+  background: var(--bg-subtle);
+  resize: vertical;
+  overflow: auto;
+}

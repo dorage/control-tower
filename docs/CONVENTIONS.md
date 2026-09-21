@@ -17,7 +17,8 @@
 ## 2. 의존성 정책
 
 - 런타임 의존성은 최소로 유지한다. 새 의존성을 추가하려면 해당 작업 문서에 근거를 남긴다.
-- 현재 허용된 런타임 의존성: `react`, `react-dom`.
+- 현재 허용된 런타임 의존성: `react`, `react-dom`, `@pug-frame/canvas`.
+- `@pug-frame/canvas` 는 **`src/web/pug-frame-host.ts` 에서만** import 한다. 그 파일은 메인 번들에 들어가지 않고 `services/pug-frame.service.ts` 가 `Bun.build` 로 따로 묶어 sandbox iframe 에 내준다(T-029). 메인 번들이나 서버 코드에서 이 패키지를 import 하지 않는다 - 2MB 가 넘고, pug 는 소스 안의 JS 를 실행한다.
 - 마크다운 라이브러리와 sanitizer 를 추가하지 않았다. 파서가 HTML 문자열을 만들지 않고 React 엘리먼트를 직접 만들기 때문에 sanitize 할 대상 자체가 없고, 필요한 문법이 문서 작업용으로 한정돼 있어 자체 파서(`lib/markdown.ts`)로 충분하다.
 - 브라우저에서만 필요한 라이브러리는 `src/web` 아래에서만 import 한다. 서버 코드가 브라우저 전용 모듈을 import 하지 않는다.
 
@@ -164,6 +165,7 @@ route  →  service  →  repository  →  disk
 - 클래스 네이밍은 BEM 축약형 `블록__요소--변형` (예: `tree__row--active`, `editor__toolbar`).
 - 로딩/빈 상태/에러는 화면마다 새로 그리지 않고 `components/ui.tsx`의 `Spinner`/`EmptyState`/`ErrorBox`를 쓴다.
 - 사용자 입력에서 온 문자열을 `dangerouslySetInnerHTML`로 넣지 않는다. **어디에서도 쓰지 않는다.** 마크다운은 `lib/markdown.ts`가 AST 로 파싱하고 `components/markdown-preview.tsx`가 React 엘리먼트로 만든다. HTML 문자열을 거치지 않으므로 XSS 위험이 구조적으로 없고 sanitizer 도 필요 없다.
+- **마크다운에서 온 소스를 실행하는 렌더러는 `sandbox="allow-scripts"` iframe 안에서만 돈다.** pug-frame 이 그렇다 - pug 는 템플릿 안의 JS 를 컴파일 시점에 실행하므로, 출력 HTML 을 걸러도 소용없고 실행 자체를 부모 창 밖으로 내야 한다. `allow-same-origin` 을 주지 않는다. 그러면 iframe 의 출처가 `null` 이 되어 부모 DOM·`/api/*` 응답 어느 쪽에도 닿지 못한다. 소스는 `postMessage` 로 넘기고, 받는 쪽은 출처 대신 `event.source` 로 상대를 가린 뒤 데이터를 `unknown` 으로 좁힌다(`lib/pug-frame-message.ts`). 출처가 `null` 인 문서가 읽는 모듈 스크립트에는 `Access-Control-Allow-Origin: *` 가 필요하므로 그 스크립트는 HTML import 가 아니라 우리 라우트가 헤더를 붙여 내준다(`routes/pug-frame.route.ts`).
 - 링크와 이미지 URL 은 스킴 허용목록(`https?:` `mailto:` `#` `/` `./` `../`)으로 거른다. 통과하지 못하면 링크로 만들지 않고 원문 텍스트(이미지는 `alt`)로 남긴다.
 - 외부 링크에는 `target="_blank" rel="noopener noreferrer"` 를 붙인다.
 - 지원하지 않는 마크다운 문법은 원문 그대로 텍스트로 출력한다. 문서를 깨뜨리지 않는 쪽을 택한다.

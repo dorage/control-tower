@@ -80,7 +80,8 @@ control-tower/
         ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 컴포넌트 스타일
         ├── lib/
         │   ├── debounce.ts         ✅        useDebouncedCallback (실시간 갱신 묶기)
-        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·히스토리·텔레메트리
+        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·시스템·히스토리·텔레메트리
+        │   ├── api.test.ts         ✅        비-JSON 200 방어 · 에러 필드 보존
         │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터 · setParam(s)
         │   ├── format.ts           ✅        숫자/시간/바이트 포맷 · tildePath · dayGroup
         │   ├── format.test.ts       ✅

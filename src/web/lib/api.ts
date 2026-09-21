@@ -39,11 +39,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const text = await response.text();
   let body: unknown = null;
+  let unparsable = false;
   if (text) {
     try {
       body = JSON.parse(text);
     } catch {
-      // 비-JSON 응답(프록시 에러 페이지 등)도 앱을 죽이지 않는다.
+      // 비-JSON 응답(프록시 에러 페이지, SPA 폴백 HTML)도 앱을 죽이지 않는다.
+      unparsable = true;
     }
   }
 
@@ -52,6 +54,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const message =
       typeof record.error === "string" ? record.error : `${response.status} ${response.statusText}`;
     throw new ApiError(response.status, message, record);
+  }
+
+  /**
+   * 200 인데 JSON 이 아니면 조용히 null 을 돌려주지 않고 던진다.
+   *
+   * 서버가 모르는 경로에는 SPA 폴백이 앱 HTML 을 200 으로 돌려준다(CONVENTIONS §5). null 을
+   * 돌려주면 화면은 `data === null` 을 로딩으로 읽어 **영원히 스피너**가 된다. 실제로 새
+   * API 를 추가하고 서버를 재시작하지 않았을 때 이 경로를 밟았다.
+   */
+  if (unparsable) {
+    throw new ApiError(
+      response.status,
+      "서버가 JSON 이 아닌 응답을 보냈습니다. 이 API 를 모르는 버전이 떠 있는지 확인하세요.",
+    );
   }
   return body as T;
 }

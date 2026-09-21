@@ -105,7 +105,13 @@ systemctl --user status control-tower-deploy      # 가장 최근 실행과 그 
 tail ~/.cache/control-tower-deploy.log            # 실제로 배포한 기록만
 systemctl --user start control-tower-deploy       # 기다리지 않고 지금 배포
 systemctl --user disable --now control-tower-deploy.timer   # 자동 배포 끄기
+bun run restart                                   # 코드는 그대로 두고 서비스만 다시 띄운다
 ```
+
+**원본 체크아웃에서 사람이 직접 `git pull` 하면 자동 배포는 재시작하지 않는다.** 스크립트는
+`HEAD` 와 `origin/main` 이 같으면 할 일이 없다고 보고 끝나기 때문이다. 그러면 새 코드가 디스크에
+있는데 서버는 옛 프로세스라, 새로 생긴 API 가 화면용 HTML 로 응답하는 상태가 된다(2026-09-21 실측,
+`/api/workspace/repos`). pull 을 손으로 했으면 `bun run restart` 를 잊지 않는다.
 
 **이 기계에서 `journalctl --user` 는 아무것도 보여주지 않는다.** `/var/log/journal` 이 없어
 유저 저널이 휘발성이기 때문이다. 그래서 배포 기록은 따로 파일에 남긴다. 1분마다 찍히는

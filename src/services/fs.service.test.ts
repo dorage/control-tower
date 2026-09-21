@@ -462,3 +462,17 @@ test("한 디렉터리의 항목이 너무 많으면 앞쪽만 담고 truncated 
 test("stat 은 되는데 읽을 수 없는 파일은 403 이다", async () => {
   expect(await readStatusOf("unreadable/f.md")).toBe(403);
 });
+
+test("locate 는 절대경로를 담는 첫 루트와 상대경로를 돌려준다", async () => {
+  const roots = await fs.listRoots();
+
+  expect(fs.locate(roots, join(base, "work/docs/a.md"))).toEqual({
+    root: "work",
+    path: "docs/a.md",
+  });
+  // 루트 자신은 상대경로가 빈 문자열이다.
+  expect(fs.locate(roots, join(base, "work"))).toEqual({ root: "work", path: "" });
+  // 구분자 경계를 지킨다 - work-secret 이 work 를 통과하면 안 된다.
+  expect(fs.locate(roots, join(base, "work-secret"))).toBeNull();
+  expect(fs.locate(roots, join(base, "nowhere/x.md"))).toBeNull();
+});

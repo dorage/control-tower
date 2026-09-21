@@ -20,6 +20,7 @@
     "typescript": "^7"
   },
   "dependencies": {
+    "@pug-frame/canvas": "^0.1.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "react": "^19.2.8",

@@ -368,6 +368,24 @@ pre {
   font: inherit;
 }
 
+/* 워크스페이스(pages/workspace.page.tsx)는 툴바가 두 줄이다: 저장소 / 체크아웃. */
+.files__toolbar--secondary {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+/* 고른 체크아웃의 브랜치·커밋·경로. 좁아지면 말줄임으로 접는다. */
+.files__meta {
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .files__toggle {
   display: inline-flex;
   align-items: center;

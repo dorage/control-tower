@@ -5,6 +5,7 @@ import { reconnectLive, useLiveState } from "../hooks/use-live";
 const NAV = [
   { to: "/", segment: "", label: "대시보드" },
   { to: "/files", segment: "files", label: "파일" },
+  { to: "/workspace", segment: "workspace", label: "워크스페이스" },
   { to: "/sessions", segment: "sessions", label: "세션" },
   { to: "/telemetry", segment: "telemetry", label: "텔레메트리" },
   { to: "/system", segment: "system", label: "성능" },

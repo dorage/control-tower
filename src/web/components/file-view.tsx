@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type RefObject } from "react";
+import { CodeBlock } from "./code-block";
 import { MarkdownEditor } from "./markdown-editor";
 import { MarkdownPreview } from "./markdown-preview";
 import { Button, EmptyState, ErrorBox, Spinner } from "./ui";
@@ -168,7 +169,10 @@ export function FileView({
           <MarkdownPreview text={editor.draft} root={root} basePath={directory} />
         </div>
       ) : (
-        <pre className="viewer__body">{editor.draft}</pre>
+        // 원문 탭은 언제나 CodeBlock 을 거친다. 문법을 모르는 언어면 색 없는 한 덩어리가 나온다.
+        <pre className="viewer__body code-surface">
+          <CodeBlock text={editor.draft} language={file.language} />
+        </pre>
       )}
     </div>
   );

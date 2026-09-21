@@ -48,7 +48,7 @@ export function PugFrameBlock({ source }: { source: string }) {
         </Button>
       </div>
       {showSource ? (
-        <pre className="md__code md__pug-frame-source">
+        <pre className="md__code md__pug-frame-source code-surface">
           <code className="lang-pug-frame">{source}</code>
         </pre>
       ) : null}

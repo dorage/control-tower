@@ -17,6 +17,22 @@
   --success: #1e7d44;
   --warning: #b26a00;
 
+  /*
+   * 코드 색. `data-code-theme` 가 없거나 auto 면 이 값이 쓰이고, 화면 테마를 그대로 따라간다.
+   * 나머지 테마는 이 파일 맨 아래의 속성 선택자 블록이 같은 이름을 덮어쓴다.
+   */
+  --code-bg: var(--bg-subtle);
+  --code-fg: var(--text);
+  --code-comment: #a0a1a7;
+  --code-string: #50a14f;
+  --code-number: #986801;
+  --code-keyword: #a626a4;
+  --code-type: #c18401;
+  --code-func: #4078f2;
+  --code-property: #e45649;
+  --code-tag: #e45649;
+  --code-punct: #5c6572;
+
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
 
@@ -42,6 +58,16 @@
     --danger-soft: #3a1f1c;
     --success: #4ec97f;
     --warning: #e0a34a;
+
+    --code-comment: #7f848e;
+    --code-string: #98c379;
+    --code-number: #d19a66;
+    --code-keyword: #c678dd;
+    --code-type: #e5c07b;
+    --code-func: #61afef;
+    --code-property: #e06c75;
+    --code-tag: #e06c75;
+    --code-punct: #9aa4b2;
   }
 }
 
@@ -605,7 +631,6 @@ pre {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg-subtle);
   overflow-x: auto;
 }
 
@@ -2171,4 +2196,232 @@ a.stat-tile:hover {
   background: var(--bg-subtle);
   resize: vertical;
   overflow: auto;
+}
+
+/* --- 코드 하이라이트 (components/code-block.tsx · lib/highlight.ts) --- */
+
+/*
+ * 코드가 놓이는 바탕. 뷰어의 원문 탭과 마크다운의 코드 블록이 함께 쓴다.
+ * 어두운 테마를 밝은 화면에서 골라도 코드 영역만 그 테마의 바탕색을 갖는다.
+ */
+.code-surface {
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+
+.code {
+  font-family: var(--mono);
+}
+
+.tok--comment {
+  color: var(--code-comment);
+}
+
+.tok--string {
+  color: var(--code-string);
+}
+
+.tok--number {
+  color: var(--code-number);
+}
+
+.tok--keyword {
+  color: var(--code-keyword);
+}
+
+.tok--type {
+  color: var(--code-type);
+}
+
+.tok--func {
+  color: var(--code-func);
+}
+
+.tok--property {
+  color: var(--code-property);
+}
+
+.tok--tag {
+  color: var(--code-tag);
+}
+
+.tok--punct {
+  color: var(--code-punct);
+}
+
+/*
+ * 테마 팔레트. hex 리터럴이 `:root` 와 다크 미디어 블록 밖에 사는 유일한 자리다 -
+ * 팔레트는 화면 색이 아니라 사용자가 고르는 값이고, 값 자체가 테마의 정체라 토큰으로 못 바꾼다.
+ * `:root` 가 아니라 속성 선택자로 쓴 덕분에 설정 화면의 미리보기 카드에도 그대로 걸린다.
+ */
+[data-code-theme="github-light"] {
+  --code-bg: #ffffff;
+  --code-fg: #24292f;
+  --code-comment: #6e7781;
+  --code-string: #0a3069;
+  --code-number: #0550ae;
+  --code-keyword: #cf222e;
+  --code-type: #953800;
+  --code-func: #8250df;
+  --code-property: #0550ae;
+  --code-tag: #116329;
+  --code-punct: #57606a;
+}
+
+[data-code-theme="solarized-light"] {
+  --code-bg: #fdf6e3;
+  --code-fg: #657b83;
+  --code-comment: #93a1a1;
+  --code-string: #2aa198;
+  --code-number: #d33682;
+  --code-keyword: #859900;
+  --code-type: #b58900;
+  --code-func: #268bd2;
+  --code-property: #cb4b16;
+  --code-tag: #268bd2;
+  --code-punct: #839496;
+}
+
+[data-code-theme="github-dark"] {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-comment: #8b949e;
+  --code-string: #a5d6ff;
+  --code-number: #79c0ff;
+  --code-keyword: #ff7b72;
+  --code-type: #ffa657;
+  --code-func: #d2a8ff;
+  --code-property: #79c0ff;
+  --code-tag: #7ee787;
+  --code-punct: #8b949e;
+}
+
+[data-code-theme="solarized-dark"] {
+  --code-bg: #002b36;
+  --code-fg: #93a1a1;
+  --code-comment: #586e75;
+  --code-string: #2aa198;
+  --code-number: #d33682;
+  --code-keyword: #859900;
+  --code-type: #b58900;
+  --code-func: #268bd2;
+  --code-property: #cb4b16;
+  --code-tag: #268bd2;
+  --code-punct: #657b83;
+}
+
+[data-code-theme="dracula"] {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-comment: #6272a4;
+  --code-string: #f1fa8c;
+  --code-number: #bd93f9;
+  --code-keyword: #ff79c6;
+  --code-type: #8be9fd;
+  --code-func: #50fa7b;
+  --code-property: #ffb86c;
+  --code-tag: #ff79c6;
+  --code-punct: #f8f8f2;
+}
+
+[data-code-theme="nord"] {
+  --code-bg: #2e3440;
+  --code-fg: #d8dee9;
+  --code-comment: #616e88;
+  --code-string: #a3be8c;
+  --code-number: #b48ead;
+  --code-keyword: #81a1c1;
+  --code-type: #8fbcbb;
+  --code-func: #88c0d0;
+  --code-property: #d08770;
+  --code-tag: #81a1c1;
+  --code-punct: #81a1c1;
+}
+
+/* --- 설정 (pages/settings.page.tsx) --- */
+
+.settings {
+  padding: 16px;
+  overflow: auto;
+}
+
+.settings__title {
+  margin: 0 0 4px;
+  font-size: 1.1em;
+  font-weight: 650;
+}
+
+.settings__hint {
+  margin: 0 0 16px;
+  max-width: 76ch;
+  color: var(--text-muted);
+}
+
+.settings__group {
+  margin-bottom: 18px;
+}
+
+.settings__group-title {
+  margin-bottom: 8px;
+  color: var(--text-faint);
+  font-size: 0.9em;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--gap);
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-card:hover {
+  border-color: var(--border-strong);
+}
+
+.theme-card--active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.theme-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.theme-card__label {
+  font-weight: 600;
+}
+
+.theme-card__check {
+  color: var(--accent);
+}
+
+.theme-card__preview {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.theme-card__preview pre {
+  margin: 0;
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  tab-size: 2;
 }

@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/dashboard.page";
 import { FilesPage } from "./pages/files.page";
 import { SessionDetailPage } from "./pages/session-detail.page";
 import { SessionsPage } from "./pages/sessions.page";
+import { SettingsPage } from "./pages/settings.page";
 import { SystemPage } from "./pages/system.page";
 import { TelemetryPage } from "./pages/telemetry.page";
 import { WorkspacePage } from "./pages/workspace.page";
@@ -24,6 +25,7 @@ function titleFor(segments: string[]): string {
   }
   if (segments[0] === "telemetry") return "텔레메트리 · control tower";
   if (segments[0] === "system") return "성능 · control tower";
+  if (segments[0] === "settings") return "설정 · control tower";
   return "control tower";
 }
 
@@ -44,6 +46,7 @@ export function App() {
     content = <SessionDetailPage id={segments[1]!} />;
   else if (segments[0] === "telemetry" && segments.length === 1) content = <TelemetryPage />;
   else if (segments[0] === "system" && segments.length === 1) content = <SystemPage />;
+  else if (segments[0] === "settings" && segments.length === 1) content = <SettingsPage />;
   else content = <NotFound pathname={pathname} />;
 
   return <AppShell>{content}</AppShell>;

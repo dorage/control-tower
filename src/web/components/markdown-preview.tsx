@@ -1,4 +1,5 @@
 import { Fragment, useMemo, type ReactNode } from "react";
+import { CodeBlock } from "./code-block";
 import { parseMarkdown, type MdBlock, type MdInline } from "../lib/markdown";
 import { navigate } from "../lib/router";
 import { PugFrameBlock } from "./pug-frame-block";
@@ -34,8 +35,8 @@ function renderBlock(block: MdBlock, key: number, root: string | null, basePath:
       // pug-frame 은 코드가 아니라 화면이다. 격리된 iframe 에서 그린다 (pug-frame-block.tsx).
       if (block.lang === "pug-frame") return <PugFrameBlock key={key} source={block.text} />;
       return (
-        <pre key={key} className="md__code">
-          <code className={block.lang ? `lang-${block.lang}` : undefined}>{block.text}</code>
+        <pre key={key} className="md__code code-surface">
+          <CodeBlock text={block.text} language={block.lang} />
         </pre>
       );
     case "quote":

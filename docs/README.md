@@ -45,6 +45,10 @@ bunx tsc --noEmit  # 타입 체크만
 서버 파일을 고치면 프로세스 재시작 없이 `fetch` 핸들러가 다시 로드되고, `src/web/*`는 `Bun.serve`의
 `development.hmr`이 따로 처리한다. 모듈 최상단 상태(캐시, `startedAt`)는 리로드 때 초기화된다.
 
+**예외 - `src/web/pug-frame-host.ts`.** 이 파일은 HMR 대상이 아니다. `services/pug-frame.service.ts` 가 `Bun.build` 로
+따로 묶어 캐시하고, 그 서비스는 호스트 파일을 import 하지 않아 `--hot` 도 변경을 모른다. 호스트나
+`lib/pug-frame-message.ts` 를 고쳤으면 서버를 다시 띄운다(`bun run restart`, 또는 dev 프로세스 재시작).
+
 **새 라우트 모듈이 생기는 변경 뒤에는 프로세스를 다시 띄운다.** `--hot`이 따라가는 것은 이미
 로드된 파일의 변경이다. 실측(2026-09-03): 5일 동안 `--hot`으로 떠 있던 서버에 브랜치를 머지해
 `/api/system`이 생기자, 경로 자체는 등록됐는데(없는 경로처럼 SPA 폴백 HTML이 나오지 않았다)

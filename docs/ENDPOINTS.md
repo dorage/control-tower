@@ -434,6 +434,30 @@ data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSes
 
 ---
 
+## 화면 자원
+
+`/api/*` 규약을 따르지 않는다. JSON 이 아니라 HTML 과 JavaScript 를 내준다.
+
+### `GET /pug-frame` ✅
+
+마크다운 미리보기의 ` ```pug-frame ` 블록을 그리는 호스트 페이지. `markdown-preview` 가 `sandbox="allow-scripts"` iframe 의 `src` 로 연다.
+사용자 입력이 하나도 들어가지 않는 고정 HTML 이고, `/pug-frame/host.js` 를 모듈 스크립트로 읽는다. `cache-control: no-store`.
+
+소스는 URL 이 아니라 부모 창이 `postMessage` 로 넘긴다(`{ type: "pug-frame:render", source }`). 호스트는 떠서 듣기 시작하면 `{ type: "pug-frame:ready" }` 를 부모에게 보낸다. 규약은 `src/web/lib/pug-frame-message.ts` 에 있다.
+
+### `GET /pug-frame/host.js` ✅
+
+`src/web/pug-frame-host.ts` 와 `@pug-frame/canvas` 를 `Bun.build` 로 묶은 한 파일(약 2MB, 프로덕션은 minify). 프로세스당 한 번 묶고 캐시한다.
+
+- `content-type: text/javascript; charset=utf-8`
+- `access-control-allow-origin: *` - 읽는 쪽이 출처 `null` 인 sandbox iframe 이고, 모듈 스크립트는 CORS 모드로만 받기 때문에 없으면 로드가 거부된다.
+- `cache-control: no-cache` + `etag` - `If-None-Match` 가 맞으면 `304`.
+- 빌드 실패는 `500` 이고 캐시에 남지 않는다. 다음 요청이 다시 묶는다.
+
+실측(라즈베리파이 5): 첫 요청 979ms(빌드 포함), 이후 46ms, 304 는 2ms.
+
+---
+
 ## 텔레메트리
 
 Claude Code 의 OpenTelemetry 내보내기를 직접 받는다. 수집을 켜는 방법은 `docs/README.md` 를 본다.

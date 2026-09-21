@@ -22,10 +22,13 @@
 bun install
 bun run dev          # http://localhost:4317 (--hot)
 bun run start:prod   # 핫 리로드 없이
+bun run restart      # 이 기계의 systemd 서비스를 다시 띄우고 /api/health 로 확인
 
 bun run check        # 타입 체크 + 테스트
 bun run check:docs   # 문서-코드 일치 검사
 ```
+
+`main` 에 머지되면 자동 배포 타이머가 알아서 받아 재시작한다. 다만 **원본 체크아웃에서 직접 `git pull` 하면** 타이머는 이미 최신이라 보고 재시작을 건너뛴다. 그때는 `bun run restart` 로 직접 띄운다. 자세한 것은 [docs/README.md](./docs/README.md#자동-배포) 에 있다.
 
 탐색할 디렉터리는 `WORKSPACE_ROOTS` 로 지정한다.
 

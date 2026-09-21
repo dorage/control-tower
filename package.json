@@ -7,6 +7,7 @@
     "dev": "bun --hot index.ts",
     "start": "bun --hot index.ts",
     "start:prod": "NODE_ENV=production bun index.ts",
+    "restart": "systemctl --user restart control-tower.service && sleep 2 && curl -fsS http://localhost:${PORT:-4317}/api/health",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "check": "tsc --noEmit && bun test && bun scripts/check-docs.ts",

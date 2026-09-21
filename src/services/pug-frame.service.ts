@@ -72,7 +72,9 @@ export function hostPage(): string {
       :root { --bg-subtle: #f6f7f9; }
       @media (prefers-color-scheme: dark) { :root { --bg-subtle: #14171c; } }
       html, body { margin: 0; height: 100%; background: var(--bg-subtle); }
-      #stage { position: absolute; inset: 0; }
+      /* canvas 가 position 을 relative 로, overflow 를 hidden 으로 덮어쓴다(inline 값이 없으면).
+         inset 으로 크기를 잡으면 그 순간 높이가 0 이 되어 그린 것이 모두 잘린다. 너비·높이를 직접 준다. */
+      #stage { width: 100%; height: 100%; }
     </style>
   </head>
   <body>

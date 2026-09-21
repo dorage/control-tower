@@ -9,6 +9,7 @@ import { sessionRoutes } from "./session.route";
 import { statsRoutes } from "./stats.route";
 import { systemRoutes } from "./system.route";
 import { telemetryRoutes } from "./telemetry.route";
+import { workspaceRoutes } from "./workspace.route";
 
 /** 라우트 모듈은 여기서만 조합한다. 새 모듈은 이 파일에만 추가한다. */
 export const routes = {
@@ -19,6 +20,7 @@ export const routes = {
   ...sessionRoutes,
   ...historyRoutes,
   ...fsRoutes,
+  ...workspaceRoutes,
   ...eventRoutes,
   ...telemetryRoutes,
 

@@ -10,6 +10,7 @@ import type {
   Timeline,
 } from "../../domain/types";
 import type { SystemMetrics } from "../../domain/system";
+import type { WorkspaceRepo } from "../../domain/workspace";
 import type { Bucket, GroupBy, TelemetryStatus } from "../../domain/telemetry";
 
 export interface Page<T> {
@@ -171,6 +172,8 @@ export const api = {
 
   telemetryLatency: (opts: TelemetryRange) =>
     request<TelemetryLatency>(`/api/telemetry/latency${query({ ...opts })}`),
+
+  workspaceRepos: () => request<Page<WorkspaceRepo>>("/api/workspace/repos"),
 
   fsRoots: () => request<{ items: FsRoot[] }>("/api/fs/roots"),
 

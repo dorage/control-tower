@@ -24,14 +24,26 @@ function ancestorsOf(path: string): string[] {
   return out;
 }
 
+/** 뿌리 자신은 제외한다 — 뿌리보다 위쪽은 이 트리가 보여주는 범위가 아니다. */
+function isBelow(basePath: string, path: string): boolean {
+  if (basePath === "") return path !== "";
+  return path.startsWith(`${basePath}/`);
+}
+
 export function FileTree({
   root,
+  basePath = "",
   selectedPath,
   hidden,
   refreshToken,
   onSelect,
 }: {
   root: string;
+  /**
+   * 트리의 뿌리. 루트 기준 상대경로이며 기본값 `""` 은 루트 자신이다.
+   * 워크스페이스 화면이 체크아웃 디렉터리 하나만 보여주려고 쓴다.
+   */
+  basePath?: string;
   selectedPath: string | null;
   hidden: boolean;
   /** 값이 바뀌면 캐시를 비우고 펼친 노드를 다시 읽는다. */
@@ -63,18 +75,30 @@ export function FileTree({
     [root, hidden],
   );
 
-  // 루트가 바뀌거나 숨김 토글/새로고침이 일어나면 캐시를 버리고 다시 읽는다.
+  /**
+   * 트리가 보여주는 범위. 이것이 바뀌면 펼침 집합을 버린다 — 다른 체크아웃의 펼침을
+   * 끌고 가면 있지도 않은 경로를 읽으러 간다.
+   */
+  const scope = `${root}\u0000${basePath}`;
+
+  // 뿌리가 바뀌거나 숨김 토글/새로고침이 일어나면 캐시를 버리고 다시 읽는다.
   useEffect(() => {
     setCache(new Map());
-    const paths = ["", ...expanded];
+    // 뿌리보다 위쪽 디렉터리는 읽지 않는다.
+    const paths = [basePath, ...[...expanded].filter((path) => isBelow(basePath, path))];
     for (const path of paths) void load(path);
     // expanded 를 deps 에 넣으면 펼칠 때마다 전체를 다시 읽는다. 의도적으로 제외한다.
-  }, [root, hidden, refreshToken, load]);
+  }, [root, basePath, hidden, refreshToken, load]);
+
+  // 범위가 바뀌면 펼침을 비운다. 바로 아래 효과가 새 selectedPath 의 조상을 다시 펼친다.
+  useEffect(() => {
+    setExpanded((previous) => (previous.size === 0 ? previous : new Set()));
+  }, [scope]);
 
   // URL 에 path 가 있으면 그 조상들을 펼친 상태로 시작한다.
   useEffect(() => {
     if (!selectedPath) return;
-    const ancestors = ancestorsOf(selectedPath);
+    const ancestors = ancestorsOf(selectedPath).filter((path) => isBelow(basePath, path));
     if (ancestors.length === 0) return;
     setExpanded((previous) => {
       const next = new Set(previous);
@@ -82,14 +106,15 @@ export function FileTree({
       for (const ancestor of ancestors) if (!next.has(ancestor)) (next.add(ancestor), (added = true));
       return added ? next : previous;
     });
-  }, [selectedPath]);
+  }, [selectedPath, scope, basePath]);
 
   // 펼쳐졌는데 아직 읽지 않은 디렉터리를 채운다. 접었다 펼치면 캐시를 쓴다.
   useEffect(() => {
     for (const path of expanded) {
+      if (!isBelow(basePath, path)) continue;
       if (!cacheRef.current.has(keyOf(root, path))) void load(path);
     }
-  }, [expanded, root, load]);
+  }, [expanded, root, basePath, load]);
 
   const toggle = useCallback((path: string) => {
     setExpanded((previous) => {
@@ -111,9 +136,9 @@ export function FileTree({
         if (entry.type === "dir" && expanded.has(entry.path)) walk(entry.path, depth + 1);
       }
     };
-    walk("", 0);
+    walk(basePath, 0);
     return rows;
-  }, [cache, expanded, root]);
+  }, [cache, expanded, root, basePath]);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -139,12 +164,13 @@ export function FileTree({
         return;
       }
       const parent = current.entry.path.split("/").slice(0, -1).join("/");
-      if (parent) setFocused(parent);
+      // 뿌리 자신은 행이 아니므로 포커스를 옮길 곳이 없다.
+      if (parent && parent !== basePath) setFocused(parent);
     },
-    [visible, focused, selectedPath, expanded, toggle],
+    [visible, focused, selectedPath, expanded, toggle, basePath],
   );
 
-  const rootNode = cache.get(keyOf(root, ""));
+  const rootNode = cache.get(keyOf(root, basePath));
 
   return (
     <div className="tree" role="tree" aria-label="파일 트리" tabIndex={0} onKeyDown={onKeyDown}>

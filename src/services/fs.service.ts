@@ -17,7 +17,8 @@ import {
 
 let rootsPromise: Promise<Map<string, FsRoot>> | null = null;
 
-function slugify(name: string): string {
+/** 이름 → URL 에 실어도 되는 id. 워크스페이스 저장소 id 도 같은 규칙을 쓴다. */
+export function slugify(name: string): string {
   const slug = name.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
   return slug || "root";
 }
@@ -70,6 +71,27 @@ function contains(rootPath: string, candidate: string): boolean {
 function toRelative(rootPath: string, absolute: string): string {
   const rel = relative(rootPath, absolute);
   return rel === "" ? "" : rel.split(sep).join("/");
+}
+
+/**
+ * 절대경로가 어느 루트 안에 있는지. 여러 루트가 겹치면 등록 순서에서 첫 번째다.
+ * 심볼릭 링크는 **호출자가 이미 풀었다고 본다** — 그래서 IO 가 없고 동기다.
+ *
+ * `resolvePath` 의 반대 방향이지만 관문이 아니다. 경로를 열어 주는 것이 아니라
+ * "이 경로를 파일 API 로 열 수 있는가" 를 답할 뿐이고, 실제 접근은 그 답으로
+ * 만든 `(root, path)` 가 다시 `resolvePath` 를 통과할 때 일어난다.
+ *
+ * 루트 목록을 인자로 받는 이유는 `getRoots()` 가 프로세스당 한 번만 계산되기
+ * 때문이다. 테스트가 자기 루트를 넣을 수 있어야 한다.
+ */
+export function locate(
+  roots: Iterable<FsRoot>,
+  absolute: string,
+): { root: string; path: string } | null {
+  for (const root of roots) {
+    if (contains(root.path, absolute)) return { root: root.id, path: toRelative(root.path, absolute) };
+  }
+  return null;
 }
 
 /**

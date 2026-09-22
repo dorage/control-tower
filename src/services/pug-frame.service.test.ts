@@ -34,3 +34,12 @@ test("hostBundle 은 없는 진입점에서 던지고 캐시를 더럽히지 않
   const bundle = await hostBundle();
   expect(bundle.code.length).toBeGreaterThan(1_000_000);
 }, 20_000);
+
+test("hostPage 의 #stage 는 position 에 기대지 않고 너비·높이를 직접 가진다", () => {
+  // canvas 는 뷰포트 요소의 position 을 relative 로 덮어쓴다. `position: absolute; inset: 0` 으로
+  // 크기를 잡으면 그 순간 높이가 0 이 되어 그려진 프레임이 전부 잘린다 (브라우저 실측, 2026-09-22).
+  const rule = hostPage().match(/#stage\s*\{([^}]*)\}/)?.[1] ?? "";
+  expect(rule).toMatch(/height:\s*100%/);
+  expect(rule).toMatch(/width:\s*100%/);
+  expect(rule).not.toMatch(/inset|position/);
+});

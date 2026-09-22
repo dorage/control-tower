@@ -113,7 +113,7 @@ iframe 이 보낸 메시지만 받는다.
 - [x] 메인 번들에 canvas 가 들어가지 않는다 (정적 빌드 0.47MB → 0.48MB).
 - [x] 규약 밖 postMessage(`null`, 문자열, 다른 도구의 메시지)에 파서가 던지지 않고 `null` 을 준다.
 - [x] `bunx tsc --noEmit` 통과. 새 테스트 7종.
-- [ ] 브라우저에서 sandbox iframe 이 모듈 스크립트를 읽고 프레임을 그린다 - 이 기계에 브라우저가 없어 사용자 확인으로 남긴다. 확인 경로: `/files` 에서 아래 예시가 든 `.md` 를 열어 미리보기 탭을 본다.
+- [x] 브라우저에서 sandbox iframe 이 모듈 스크립트를 읽고 프레임을 그린다 - 헤드리스 Chromium 실측(2026-09-22, §6). 확인 경로: `/files` 에서 아래 예시가 든 `.md` 를 열어 미리보기 탭을 본다.
 
 ```pug-frame
 mobile#main-1
@@ -138,3 +138,25 @@ mobile#main-2
 - 소스의 문법 강조("원문" 은 기존 코드 상자다).
 - 블록 높이를 내용에 맞추기. canvas 는 무한 캔버스라 "내용 높이" 가 없다.
 - `@pug-frame/render` 의 정적 HTML 출력. `p-focus`·툴팁·Tailwind 유틸리티가 빠져 canvas 보다 못하다.
+
+## 6. 정정 - 호스트 뷰포트 높이 0 (2026-09-22)
+
+첫 배포 뒤 "캔버스가 그려지지 않는다" 는 보고가 있었다. 이 기계에 브라우저가 없어 육안 확인을 남겨
+두었던 항목이 실제로 깨져 있었다. Playwright 의 Chromium(`~/.cache/ms-playwright`)에 빠진 시스템
+라이브러리를 사용자 권한으로 내려받아 붙여 헤드리스로 띄우고 iframe 안을 들여다봤다.
+
+- **네트워크·격리·규약은 모두 정상이었다.** `/pug-frame` 과 `/pug-frame/host.js` 는 200, 출처 `null`
+  iframe 이 모듈 스크립트를 읽었고, `ready` → `render` 메시지가 양방향으로 오갔다. canvas 의
+  `render()` 도 150ms 에 성공해 shadow root 안에 `.frame` 두 개를 만들었다.
+- **보이지 않은 이유는 뷰포트 요소의 크기였다.** 호스트 페이지는 `#stage { position: absolute; inset: 0 }`
+  으로 크기를 잡았는데, `pugFrameCanvas()` 는 생성 시 대상 요소의 `position` 을 `relative` 로,
+  `overflow` 를 `hidden` 으로 덮어쓴다(inline 값이 없을 때. `@pug-frame/canvas` 0.1.0 `dist/index.js`
+  의 생성자). `position` 이 바뀌면 `inset` 이 무효가 되어 높이가 0 이 되고, `overflow: hidden` 이
+  프레임과 줌 버튼까지 전부 잘랐다. 실측 - 고치기 전 `#stage` 1200×0, 고친 뒤 654×480.
+- **고침** - `#stage { width: 100%; height: 100% }` 로 크기를 직접 준다(`html, body` 는 이미 `height:
+  100%`). `pug-frame.service.test.ts` 가 이 규칙이 `inset`·`position` 에 기대지 않는지 확인한다.
+- 렌더링 결과는 stage 의 `shadowRoot` 안에 있다. `innerHTML` 만 보고 "빈 레이어" 라 판단하면 틀린다 -
+  이번 조사에서도 한 번 그렇게 잘못 읽었다.
+- 이 기계에는 글꼴이 하나도 없어(`fc-list` 0건) 헤드리스에서 `ch` 단위가 0 으로 계산된다. `.md { max-width:
+  76ch }` 가 0 이 되어 미리보기 폭이 0 으로 보이지만, 이는 검증 환경의 문제이고 실제 브라우저와 무관하다.
+  검증 스크립트는 그 규칙만 덮어쓰고 확인했다.

@@ -17,7 +17,10 @@ export interface QuickLink {
 }
 
 /** 바로가기를 늘리려면 이 배열에 한 줄 추가한다. */
-const LINKS: QuickLink[] = [{ label: "FreshRSS", port: 8080, hint: "RSS 리더" }];
+const LINKS: QuickLink[] = [
+  { label: "FreshRSS", port: 8080, hint: "RSS 리더" },
+  { label: "vibe-shorts", port: 4200, hint: "쇼츠 영상 스튜디오 화면 (studio-web)" },
+];
 
 /**
  * 순수 함수로 빼둔 이유: 링크가 어떤 주소로 향하는지가 이 컴포넌트에서 유일하게

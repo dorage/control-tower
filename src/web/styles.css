@@ -440,6 +440,12 @@ pre {
   overflow: auto;
 }
 
+/* 트리 접기(hooks/use-tree-collapse.ts). 좁은 화면에서만 뜨고, 넓은 화면은 좌우 배치라 접을 것이 없다. */
+.files__collapse {
+  display: none;
+  white-space: nowrap;
+}
+
 .tree {
   flex: 1;
   min-height: 0;
@@ -557,6 +563,19 @@ pre {
   .files__side {
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .files__collapse {
+    display: inline-flex;
+  }
+
+  /* 접으면 첫 줄 툴바(루트·숨김·새로고침·펼치기)만 남기고 나머지 높이를 전부 뷰어에 준다. */
+  .files--collapsed {
+    grid-template-rows: auto 1fr;
+  }
+
+  .files--collapsed .files__side > :not(:first-child) {
+    display: none;
   }
 }
 

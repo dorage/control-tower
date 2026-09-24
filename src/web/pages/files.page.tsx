@@ -6,6 +6,7 @@ import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { navigate, useLocation } from "../lib/router";
 import { useQuery } from "../hooks/use-query";
+import { useTreeCollapse } from "../hooks/use-tree-collapse";
 
 export function FilesPage() {
   const { search } = useLocation();
@@ -14,6 +15,7 @@ export function FilesPage() {
 
   const [hidden, setHidden] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
+  const tree = useTreeCollapse(path);
 
   const roots = useQuery(() => api.fsRoots(), []);
 
@@ -59,7 +61,7 @@ export function FilesPage() {
   if (!root) return <Spinner label="루트를 고르는 중…" />;
 
   return (
-    <div className="files">
+    <div className={tree.collapsed ? "files files--collapsed" : "files"}>
       <div className="files__side">
         <div className="files__toolbar">
           {roots.data.items.length > 1 ? (
@@ -85,6 +87,14 @@ export function FilesPage() {
           </label>
           <Button variant="ghost" onClick={() => setRefreshToken((token) => token + 1)}>
             새로고침
+          </Button>
+          <Button
+            variant="ghost"
+            className="files__collapse"
+            aria-expanded={!tree.collapsed}
+            onClick={tree.toggle}
+          >
+            {tree.collapsed ? "트리 펼치기" : "트리 접기"}
           </Button>
         </div>
         <FileTree

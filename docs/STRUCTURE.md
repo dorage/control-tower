@@ -115,7 +115,8 @@ control-tower/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   ├── use-editor-file.ts  ✅        파일 로드/더티/저장 상태 기계 · 초안 보존
         │   ├── use-live.ts         ✅        SSE 구독 (모듈 스코프 EventSource 하나, 참조 계수)
-        │   └── use-poll.ts         ✅        탭이 보일 때만 도는 폴링 (T-026)
+        │   ├── use-poll.ts         ✅        탭이 보일 때만 도는 폴링 (T-026)
+        │   └── use-tree-collapse.ts ✅       좁은 화면에서 파일 트리 접기. 파일을 고르면 접고 툴바 버튼으로 펼친다 (T-012)
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다

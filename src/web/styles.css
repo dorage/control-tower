@@ -2212,6 +2212,22 @@ a.stat-tile:hover {
   overflow: auto;
 }
 
+/* --- HTML 미리보기 (components/html-preview.tsx) - 격리된 iframe 이 뷰어 본문을 채운다 (T-031) --- */
+
+/*
+ * 바탕은 화면 테마와 무관하게 흰색이다. 문서가 배경색을 정하지 않으면 iframe 은 투명해서,
+ * 어두운 화면에서는 문서의 기본 검은 글자가 검은 바탕에 놓인다. 브라우저 탭에서 여는 것과
+ * 같은 모습을 주려면 탭의 기본 바탕(흰색)을 따라야 한다. 토큰이 아니라 키워드를 쓴 이유다.
+ */
+.html-preview {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  background: white;
+}
+
 /* --- 코드 하이라이트 (components/code-block.tsx · lib/highlight.ts) --- */
 
 /*

@@ -62,8 +62,10 @@ control-tower/
     │   ├── telemetry.service.test.ts ✅      파싱·가드·롤업 멱등·크기 차단기 테스트
     │   ├── system.service.ts       ✅        스냅샷 두 장의 차이 → 지표, 표본 캐시 (T-026)
     │   ├── system.service.test.ts   ✅       buildMetrics 순수 계산 · 정렬 · 경계
-    │   ├── fs.service.ts           ✅        resolvePath · locate · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
-    │   ├── fs.service.test.ts       ✅       경로 탈출 방어 · 저장 충돌·원자성 · locate 테스트
+    │   ├── fs.service.ts           ✅        resolvePath · resolveFile · locate · listDirectory/buildTree/readFile/writeFile · isEditable/languageOf/versionOf
+    │   ├── fs.service.test.ts       ✅       경로 탈출 방어 · 저장 충돌·원자성 · locate · /raw 가 같은 관문을 지나는지
+    │   ├── raw.service.ts          ✅        /raw/<root>/<path> 응답 - 확장자 기반 타입 · nosniff · HTML 에 CSP sandbox (T-031)
+    │   ├── raw.service.test.ts      ✅       sandbox 대상 타입 · 헤더 형태
     │   ├── workspace.service.ts    ✅        루트 탐색(깊이 2) → 저장소 묶기 · 체크아웃을 파일 API 루트에 매핑 (T-028)
     │   ├── workspace.service.test.ts ✅      실제 git 픽스처로 탐색 규칙·루트 밖 체크아웃 테스트
     │   ├── pug-frame.service.ts    ✅        pug-frame 호스트 페이지 HTML · 호스트 스크립트를 Bun.build 로 따로 묶어 캐시 (T-029)
@@ -81,7 +83,8 @@ control-tower/
     │   ├── otlp.route.ts           ✅        POST /v1/metrics · /v1/logs (OTLP 수신, /api 규약 예외)
     │   ├── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
     │   ├── workspace.route.ts      ✅        /api/workspace/repos (T-028)
-    │   └── pug-frame.route.ts      ✅        /pug-frame · /pug-frame/host.js. 화면 자원, CORS 헤더를 붙인다 (T-029)
+    │   ├── pug-frame.route.ts      ✅        /pug-frame · /pug-frame/host.js. 화면 자원, CORS 헤더를 붙인다 (T-029)
+    │   └── raw.route.ts            ✅        /raw/* - 워크스페이스 파일을 그대로. HTML 미리보기 iframe 이 쓴다 (T-031)
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
         ├── index.html              ✅        스크립트·스타일 연결
         ├── main.tsx                ✅        React 루트 마운트
@@ -105,7 +108,9 @@ control-tower/
         │   ├── editing.ts          ✅        목록 이어쓰기 · 들여쓰기/내어쓰기 (순수 문자열 연산)
         │   ├── editing.test.ts      ✅
         │   ├── pug-frame-message.ts ✅       미리보기 ↔ pug-frame 호스트 postMessage 규약과 파서. 양쪽 번들이 같이 쓴다 (T-029)
-        │   └── pug-frame-message.test.ts ✅  규약 밖 메시지에 던지지 않는다
+        │   ├── pug-frame-message.test.ts ✅  규약 밖 메시지에 던지지 않는다
+        │   ├── raw-url.ts          ✅        /raw/<root>/<path> 조립(rawUrl)과 해석(parseRawPath). 서버 라우트도 import 한다 (T-031)
+        │   └── raw-url.test.ts      ✅        조각 인코딩 왕복 · 구분자 위조 거절
         ├── hooks/
         │   ├── use-query.ts        ✅        비동기 데이터 로딩(경쟁 상태 처리)
         │   ├── use-editor-file.ts  ✅        파일 로드/더티/저장 상태 기계 · 초안 보존
@@ -114,7 +119,8 @@ control-tower/
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다
-        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다 (T-028, T-030)
+        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다. HTML 은 미리보기를 html-preview 로 (T-028, T-030, T-031)
+        │   ├── html-preview.tsx    ✅        HTML 파일 → sandbox iframe(/raw/<root>/<path>). version 이 바뀌면 새로 만든다 (T-031)
         │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너
         │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. ```pug-frame 은 pug-frame-block, 나머지 코드는 code-block 으로
         │   ├── pug-frame-block.tsx ✅        ```pug-frame 블록 → sandbox iframe(/pug-frame) + 원문 토글 (T-029)

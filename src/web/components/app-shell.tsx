@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { Link, useLocation } from "../lib/router";
 import { reconnectLive, useLiveState } from "../hooks/use-live";
 
@@ -42,6 +42,19 @@ function LiveDot() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const active = pathname.split("/").filter(Boolean)[0] ?? "";
+  const navRef = useRef<HTMLElement>(null);
+
+  // 모바일에서 메뉴가 가로로 넘치면 현재 메뉴를 가운데로 끌어온다.
+  // scrollIntoView 는 페이지 세로 스크롤까지 건드리므로 nav 의 scrollLeft 만 옮긴다.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav || nav.scrollWidth <= nav.clientWidth) return;
+    const item = nav.querySelector<HTMLElement>(".nav__item--active");
+    if (!item) return;
+    const navBox = nav.getBoundingClientRect();
+    const itemBox = item.getBoundingClientRect();
+    nav.scrollLeft += itemBox.left - navBox.left - (navBox.width - itemBox.width) / 2;
+  }, [active]);
 
   return (
     <div className="shell">
@@ -55,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <nav className="nav" aria-label="주요 메뉴">
+      <nav ref={navRef} className="nav" aria-label="주요 메뉴">
         {NAV.map((item) => (
           <Link
             key={item.to}

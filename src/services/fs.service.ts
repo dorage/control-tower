@@ -316,11 +316,22 @@ function looksBinary(bytes: Uint8Array): boolean {
   return false;
 }
 
-export async function readFile(rootId: string, relPath: string): Promise<FsFile> {
-  const { root, absolute, relative: rel } = await resolvePath(rootId, relPath);
+export interface ResolvedFile extends Resolved {
+  size: number;
+  modifiedAt: number;
+}
+
+/**
+ * 읽을 파일 하나의 관문. `resolvePath` 뒤에 "파일이고, 존재하고, 상한 안"까지 확인한다.
+ * JSON 으로 읽는 `readFile` 과 바이트 그대로 내주는 `/raw/*`(raw.service) 가 같이 쓴다 —
+ * 두 경로가 서로 다른 검사를 하면 한쪽으로만 열리는 파일이 생긴다.
+ */
+export async function resolveFile(rootId: string, relPath: string): Promise<ResolvedFile> {
+  const resolved = await resolvePath(rootId, relPath);
+  const rel = resolved.relative;
   if (rel === "") throw new HttpError(400, "path is required");
 
-  const info = await statEntry(absolute);
+  const info = await statEntry(resolved.absolute);
   if (!info) throw new HttpError(404, `not found: ${rel}`);
   if (info.isDirectory) throw new HttpError(400, `is a directory: ${rel}`);
 
@@ -328,6 +339,12 @@ export async function readFile(rootId: string, relPath: string): Promise<FsFile>
   if (info.size > config.fsMaxReadBytes) {
     throw new HttpError(413, `file too large: ${info.size} bytes (max ${config.fsMaxReadBytes})`);
   }
+
+  return { ...resolved, size: info.size, modifiedAt: info.modifiedAt };
+}
+
+export async function readFile(rootId: string, relPath: string): Promise<FsFile> {
+  const { root, absolute, relative: rel, ...info } = await resolveFile(rootId, relPath);
 
   let bytes: Uint8Array;
   try {

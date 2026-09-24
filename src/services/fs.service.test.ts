@@ -6,6 +6,7 @@ import type { FsEntry } from "../domain/types";
 
 let base: string;
 let fs: typeof import("./fs.service");
+let raw: typeof import("./raw.service");
 
 /** 읽기 상한(config.fsMaxReadBytes 기본값)을 넘기려면 실제로 이만큼 써야 한다. */
 const MAX_READ_BYTES = 2 * 1024 * 1024;
@@ -36,6 +37,10 @@ beforeAll(async () => {
   await Bun.write(join(base, "work/tree/Alpha/leaf.md"), "leaf");
   await Bun.write(join(base, "work/tree/Alpha/nested/deep.md"), "deep");
   await Bun.write(join(base, "work/tree/zebra/z.md"), "z");
+  // /raw 가 문서와 그 옆의 자원을 그대로 내주는지 볼 픽스처(T-031). 이름에 공백과 # 을 섞는다.
+  await Bun.write(join(base, "work/site/index.html"), "<!doctype html><link rel=stylesheet href='./my style.css'>");
+  await Bun.write(join(base, "work/site/my style.css"), "body{color:red}");
+  await Bun.write(join(base, "work/site/#notes.txt"), "sharp");
 
   // 읽을 수 없는 디렉터리. 트리가 이것 하나로 죽지 않는지 본다.
   await Bun.write(join(base, "work/locked/unreachable.md"), "locked");
@@ -60,6 +65,7 @@ beforeAll(async () => {
   ].join(":");
   // getRoots() 가 첫 호출 결과를 캐시하므로, 환경변수를 세운 뒤에 모듈을 들인다.
   fs = await import("./fs.service");
+  raw = await import("./raw.service");
 });
 
 afterAll(async () => {
@@ -438,6 +444,52 @@ test("디렉터리·빈 경로·없는 파일 읽기", async () => {
   expect(await readStatusOf("tree")).toBe(400);
   expect(await readStatusOf("")).toBe(400);
   expect(await readStatusOf("tree/ghost.md")).toBe(404);
+});
+
+// ---------------------------------------------------------------- /raw (T-031)
+
+async function rawStatusOf(pathname: string): Promise<number> {
+  try {
+    return (await raw.serveRaw(pathname)).status;
+  } catch (error) {
+    return (error as { status?: number }).status ?? 500;
+  }
+}
+
+test("raw 는 HTML 문서를 바이트 그대로, CSP sandbox 와 함께 내준다", async () => {
+  const response = await raw.serveRaw("/raw/work/site/index.html");
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toStartWith("text/html");
+  expect(response.headers.get("content-security-policy")).toStartWith("sandbox ");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(await response.text()).toStartWith("<!doctype html>");
+});
+
+test("raw 는 문서 옆의 자원도 같은 규칙으로 내준다 - 공백·# 이 든 이름은 조각 인코딩으로 온다", async () => {
+  const css = await raw.serveRaw("/raw/work/site/my%20style.css");
+  expect(css.headers.get("content-type")).toStartWith("text/css");
+  expect(css.headers.get("content-security-policy")).toBeNull();
+  expect(await css.text()).toBe("body{color:red}");
+
+  const sharp = await raw.serveRaw("/raw/work/site/%23notes.txt");
+  expect(await sharp.text()).toBe("sharp");
+});
+
+test("raw 는 readFile 과 같은 관문을 지난다 - 탈출 403, 디렉터리 400, 없는 파일 404, 형식 오류 400", async () => {
+  expect(await rawStatusOf("/raw/work/../outside/secret.md")).toBe(403);
+  expect(await rawStatusOf("/raw/work/escape/secret.md")).toBe(403);
+  expect(await rawStatusOf("/raw/nope/site/index.html")).toBe(403);
+  expect(await rawStatusOf("/raw/work/site")).toBe(400);
+  expect(await rawStatusOf("/raw/work/site/ghost.html")).toBe(404);
+  expect(await rawStatusOf("/raw/work")).toBe(400);
+  expect(await rawStatusOf("/raw/work/a%2Fb.html")).toBe(400);
+});
+
+test("raw 도 읽기 상한을 따른다", async () => {
+  const path = join(base, "work/site/huge.html");
+  await Bun.write(path, "a".repeat(MAX_READ_BYTES + 1));
+  expect(await rawStatusOf("/raw/work/site/huge.html")).toBe(413);
+  await Bun.file(path).delete();
 });
 
 test("상한을 넘는 파일은 바이트를 읽기 전에 413 이다", async () => {

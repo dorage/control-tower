@@ -456,6 +456,18 @@ data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSes
 
 실측(라즈베리파이 5): 첫 요청 979ms(빌드 포함), 이후 46ms, 304 는 2ms.
 
+### `GET /raw/<root>/<path>` ✅
+
+워크스페이스 파일을 **바이트 그대로** 내준다(T-031). 뷰어의 HTML 미리보기가 `sandbox="allow-scripts allow-forms allow-popups allow-modals"` iframe 의 `src` 로 열고, 그 문서 안의 상대 주소(`./style.css`, `img/a.png`)가 같은 규칙으로 다시 들어온다. 그래서 쿼리(`?root=&path=`)가 아니라 **경로**에 싣는다 — 쿼리 방식이면 브라우저가 상대 주소를 풀 기준이 없다.
+
+- `<root>` 는 `/api/fs/roots` 의 `id`, `<path>` 는 루트 기준 상대경로. 조각(segment)마다 `encodeURIComponent` 로 인코딩한다(`a b/c#d.html` → `/raw/work/a%20b/c%23d.html`). 조립과 해석은 `src/web/lib/raw-url.ts` 하나가 맡고 서버와 화면이 같이 쓴다.
+- 경로 검사는 `GET /api/fs/file` 과 **같은 관문**(`resolveFile` → `resolvePath`)을 지난다. 탈출 403, 미등록 루트 403, 디렉터리 400, 없는 파일 404, `FS_MAX_READ_BYTES` 초과 413. 조각을 디코딩했을 때 `/` 가 나오면(`%2F`) 구분자 위조로 400.
+- `content-type` 은 확장자로 정한다(`Bun.file().type`). 내용을 보고 고치지 않으며 `x-content-type-options: nosniff` 를 붙여 브라우저도 추측하지 못하게 한다. 모르는 확장자는 `application/octet-stream`.
+- `.html`·`.htm`·`.xhtml`·`.svg` 응답에는 `content-security-policy: sandbox allow-scripts allow-forms allow-popups allow-modals` 가 붙는다. iframe 속성만으로는 **같은 주소를 새 탭으로 열었을 때** 문서가 이 서버의 출처로 돌아가 `PUT /api/fs/file` 을 부를 수 있기 때문이다. 헤더가 있으면 어디서 열어도 출처가 `null` 이다(헤드리스 Chromium 실측 - 직접 열기·iframe 모두 `self.origin === "null"`, 문서 안 `fetch("/api/health")` 는 거절).
+- `access-control-allow-origin` 을 **붙이지 않는다.** 붙이면 출처 `null` 문서의 `<script type="module">` 과 `fetch()` 가 풀리지만, 브라우저의 다른 사이트도 이 사용자의 파일을 읽어 갈 수 있다. 그래서 모듈 스크립트와 문서 안 `fetch` 는 이 미리보기에서 동작하지 않는다 — 인라인 스크립트, 일반 `<script src>`, CDN 스크립트, CSS, 이미지는 정상이다.
+- `cache-control: no-store`. 뷰어는 파일 `version` 이 바뀌면 iframe 을 새로 만들어 다시 받는다.
+- `..` 같은 점 조각은 `URL` 파서가 경로 해석 전에 정규화해 버려 대개 형식 오류(400)로 떨어진다. 그래도 경계는 `resolvePath` 가 지킨다 — 테스트는 파서를 거치지 않고 `serveRaw("/raw/work/../outside/…")` 를 직접 불러 403 을 확인한다.
+
 ---
 
 ## 텔레메트리

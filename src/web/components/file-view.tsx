@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { CodeBlock } from "./code-block";
+import { HtmlPreview } from "./html-preview";
 import { MarkdownEditor } from "./markdown-editor";
 import { MarkdownPreview } from "./markdown-preview";
 import { Button, EmptyState, ErrorBox, Spinner } from "./ui";
@@ -109,11 +110,12 @@ export function FileView({
     );
   }
 
-  // 미리보기는 마크다운에만, 편집은 쓰기 허용 확장자에만. 원문은 언제나 있다.
+  // 미리보기는 마크다운과 HTML 에만, 편집은 쓰기 허용 확장자에만. 원문은 언제나 있다.
+  const previewable = file.language === "markdown" || file.language === "html";
   const available = MODES.filter(
     (candidate) =>
       candidate.id === "source" ||
-      (candidate.id === "preview" && file.language === "markdown") ||
+      (candidate.id === "preview" && previewable) ||
       (candidate.id === "edit" && file.editable),
   );
   const active: ViewMode = available.some((candidate) => candidate.id === mode) ? mode : "source";
@@ -159,11 +161,16 @@ export function FileView({
       </div>
 
       {/*
-        세 탭 모두 서버 응답이 아니라 draft 를 원본으로 삼는다. 그래서 편집 중인 내용을
+        마크다운 세 탭은 서버 응답이 아니라 draft 를 원본으로 삼는다. 그래서 편집 중인 내용을
         저장하기 전에 미리보기로 확인할 수 있다. 편집하지 않았다면 draft 는 디스크 내용과 같다.
+
+        HTML 미리보기만 예외다 - iframe 이 /raw 에서 디스크의 파일을 직접 받는다(html-preview.tsx).
+        HTML 은 편집 대상이 아니라 draft 와 디스크가 어긋날 일이 없다.
       */}
       {active === "edit" ? (
         <MarkdownEditor editor={editor} />
+      ) : active === "preview" && file.language === "html" ? (
+        <HtmlPreview root={root} path={file.path} version={file.version} />
       ) : active === "preview" ? (
         <div className="viewer__body viewer__body--rendered">
           <MarkdownPreview text={editor.draft} root={root} basePath={directory} />

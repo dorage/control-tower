@@ -6,6 +6,7 @@ import { historyRoutes } from "./history.route";
 import { otlpRoutes } from "./otlp.route";
 import { projectRoutes } from "./project.route";
 import { pugFrameRoutes } from "./pug-frame.route";
+import { rawRoutes } from "./raw.route";
 import { sessionRoutes } from "./session.route";
 import { statsRoutes } from "./stats.route";
 import { systemRoutes } from "./system.route";
@@ -30,6 +31,9 @@ export const routes = {
 
   // pug-frame 호스트 페이지와 스크립트. 화면 자원이라 /api 규약 밖이다 - pug-frame.route.ts 참조.
   ...pugFrameRoutes,
+
+  // 워크스페이스 파일을 그대로 내주는 /raw/<root>/<path>. HTML 미리보기 iframe 이 쓴다 - raw.route.ts 참조.
+  ...rawRoutes,
 
   // SPA 폴백. 구체적인 경로가 먼저 매칭되므로 /api/* 를 가리지 않는다.
   "/*": index,

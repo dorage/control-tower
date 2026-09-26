@@ -30,14 +30,16 @@ control-tower/
     │   ├── types.ts                ✅        디스크 원본 타입 + 도메인 타입
     │   ├── telemetry.ts            ✅        OTLP 원본 타입 + 시리즈 키·조회 타입
     │   ├── system.ts               ✅        호스트 성능 지표 타입 (T-026)
-    │   └── workspace.ts            ✅        git 저장소·체크아웃 타입 (T-028)
+    │   └── workspace.ts            ✅        git 저장소·체크아웃 타입 (T-028) · 소스 컨트롤 동작·상태·결과 타입 (T-032)
     ├── db/
     │   └── telemetry.db.ts         ✅        bun:sqlite 핸들·스키마·PRAGMA (auto_vacuum=incremental)
     ├── lib/                                  도메인 지식 없는 순수 유틸
     │   ├── http.ts                 ✅        응답 헬퍼 · 쿼리 파싱 · HttpError · withRoute
     │   ├── http.test.ts             ✅
     │   ├── text.ts                 ✅        stripAnsi/truncate/parseJsonl/decodeProjectId
-    │   └── text.test.ts             ✅        ANSI 제거·JSONL 방어 파싱·경로 복원 한계
+    │   ├── text.test.ts             ✅        ANSI 제거·JSONL 방어 파싱·경로 복원 한계
+    │   ├── time.ts                 ✅        formatTimestamp(date, timeZone) · KST. 프로세스 TZ 에 기대지 않는다 (T-032)
+    │   └── time.test.ts             ✅        KST 변환·날짜 경계·0 채움
     ├── repositories/                         디스크 읽기·쓰기
     │   ├── history.repository.ts   ✅        ~/.claude/history.jsonl
     │   ├── live-session.repository.ts ✅     ~/.claude/sessions/<pid>.json
@@ -47,7 +49,8 @@ control-tower/
     │   ├── system.repository.test.ts ✅      실측 /proc 문자열 파싱 · 방어 파서 · 실제 /proc 스모크
     │   ├── fs.repository.ts        ✅        readDirectory/statEntry/readFileBytes/writeFileAtomic
     │   ├── git.repository.ts       ✅        `.git` 직접 읽기(HEAD·refs·packed-refs·worktrees). git 명령을 띄우지 않는다 (T-028)
-    │   └── git.repository.test.ts  ✅        실제 git 으로 만든 저장소·worktree·잠금·prunable·깨진 HEAD
+    │   ├── git.repository.test.ts  ✅        실제 git 으로 만든 저장소·worktree·잠금·prunable·깨진 HEAD
+    │   └── git-command.repository.ts ✅      `runGit(cwd, args)` - Bun.spawn. 외부 프로세스를 띄우는 유일한 곳. 묻지 않고(GIT_TERMINAL_PROMPT=0) 60초 시한 (T-032)
     ├── services/                             도메인 로직·집계
     │   ├── history.service.ts      ✅
     │   ├── live.service.ts         ✅
@@ -66,8 +69,9 @@ control-tower/
     │   ├── fs.service.test.ts       ✅       경로 탈출 방어 · 저장 충돌·원자성 · locate · /raw 가 같은 관문을 지나는지
     │   ├── raw.service.ts          ✅        /raw/<root>/<path> 응답 - 확장자 기반 타입 · nosniff · HTML 에 CSP sandbox (T-031)
     │   ├── raw.service.test.ts      ✅       sandbox 대상 타입 · 헤더 형태
-    │   ├── workspace.service.ts    ✅        루트 탐색(깊이 2) → 저장소 묶기 · 체크아웃을 파일 API 루트에 매핑 (T-028)
+    │   ├── workspace.service.ts    ✅        루트 탐색(깊이 2) → 저장소 묶기 · 체크아웃을 파일 API 루트에 매핑 (T-028) · 소스 컨트롤 관문(requireCheckout)·상태 파싱·pull/commit/push (T-032)
     │   ├── workspace.service.test.ts ✅      실제 git 픽스처로 탐색 규칙·루트 밖 체크아웃 테스트
+    │   ├── workspace-git.service.test.ts ✅  bare origin + 클론 둘로 pull·commit(KST 메시지)·push·갈라짐 409·추적 없음·detached·403/404 (T-032)
     │   ├── pug-frame.service.ts    ✅        pug-frame 호스트 페이지 HTML · 호스트 스크립트를 Bun.build 로 따로 묶어 캐시 (T-029)
     │   └── pug-frame.service.test.ts ✅      호스트 번들이 canvas 를 품고 캐시되는지 · 실패가 캐시를 더럽히지 않는지
     ├── routes/                               HTTP 핸들러 (Bun.serve routes 조각)
@@ -82,7 +86,7 @@ control-tower/
     │   ├── telemetry.route.ts      ✅        /api/telemetry/status · tokens · cost · timeseries · latency
     │   ├── otlp.route.ts           ✅        POST /v1/metrics · /v1/logs (OTLP 수신, /api 규약 예외)
     │   ├── fs.route.ts             ✅        /api/fs/roots · list · tree · file(GET/PUT)
-    │   ├── workspace.route.ts      ✅        /api/workspace/repos (T-028)
+    │   ├── workspace.route.ts      ✅        /api/workspace/repos (T-028) · /api/workspace/git GET 상태 / POST pull·commit·push (T-032)
     │   ├── pug-frame.route.ts      ✅        /pug-frame · /pug-frame/host.js. 화면 자원, CORS 헤더를 붙인다 (T-029)
     │   └── raw.route.ts            ✅        /raw/* - 워크스페이스 파일을 그대로. HTML 미리보기 iframe 이 쓴다 (T-031)
     └── web/                                  브라우저 번들 (서버 코드 import 금지)
@@ -94,7 +98,7 @@ control-tower/
         ├── styles.css              ✅        CSS 토큰 · 라이트/다크 · 코드 테마 팔레트 · 컴포넌트 스타일
         ├── lib/
         │   ├── debounce.ts         ✅        useDebouncedCallback (실시간 갱신 묶기)
-        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·시스템·히스토리·텔레메트리
+        │   ├── api.ts              ✅        fetch 래퍼 + ApiError + fs·세션·프로젝트·통계·시스템·히스토리·텔레메트리·워크스페이스(목록·git 상태·git 동작)
         │   ├── api.test.ts         ✅        비-JSON 200 방어 · 에러 필드 보존
         │   ├── router.ts           ✅        useSyncExternalStore 기반 미니 라우터 · setParam(s)
         │   ├── format.ts           ✅        숫자/시간/바이트 포맷 · tildePath · dayGroup
@@ -122,6 +126,7 @@ control-tower/
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다
         │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다. HTML 은 미리보기를 html-preview 로 (T-028, T-030, T-031)
         │   ├── html-preview.tsx    ✅        HTML 파일 → sandbox iframe(/raw/<root>/<path>). version 이 바뀌면 새로 만든다 (T-031)
+        │   ├── source-control.tsx  ✅        워크스페이스 소스 컨트롤 섹션 - 상태 한 줄 + Pull·Commit·Push + 결과/출력 + 서버 자신 안내 (T-032)
         │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너
         │   ├── markdown-preview.tsx ✅       AST → React 엘리먼트. ```pug-frame 은 pug-frame-block, 나머지 코드는 code-block 으로
         │   ├── pug-frame-block.tsx ✅        ```pug-frame 블록 → sandbox iframe(/pug-frame) + 원문 토글 (T-029)
@@ -140,7 +145,7 @@ control-tower/
         └── pages/
             ├── dashboard.page.tsx      ✅        바로가기 줄 + 타일 + 시스템 카드 + 최근 세션·프로젝트·툴 막대·최근 프롬프트
             ├── files.page.tsx          ✅        루트 고르기 + 좌 트리 / 우 뷰어(file-view.tsx)
-            ├── workspace.page.tsx      ✅        저장소·체크아웃 고르기 + 체크아웃 안의 트리 / 뷰어 (T-028)
+            ├── workspace.page.tsx      ✅        저장소·체크아웃 고르기 + 소스 컨트롤 섹션 + 체크아웃 안의 트리 / 뷰어 (T-028, T-032)
             ├── sessions.page.tsx       ✅        검색·프로젝트 필터·"더 보기"
             ├── system.page.tsx         ✅        CPU·메모리 게이지 + 상위 프로세스 20 (T-026)
             ├── settings.page.tsx       ✅        코드 색 테마 고르기. 카드마다 그 테마로 미리보기 (T-030)
@@ -170,6 +175,7 @@ routes  →  services  →  repositories  →  디스크
 | 프롬프트 히스토리 | `$CLAUDE_HOME/history.jsonl` | `history.repository.ts` |
 | 워크스페이스 파일 | `$WORKSPACE_ROOTS`의 각 루트 | `fs.repository.ts` (T-005) |
 | git 메타데이터 | `<repo>/.git/HEAD` · `refs` · `packed-refs` · `worktrees/*` | `git.repository.ts` (T-028) |
+| git 동작 | 체크아웃 디렉터리에서 `git status`·`pull --ff-only`·`add -A`·`commit`·`push` (버튼 한 번에 한 번) | `git-command.repository.ts` (T-032) |
 | 호스트 성능 | `/proc/stat` · `/proc/meminfo` · `/proc/<pid>/stat` · `/proc/loadavg` · `/proc/uptime` · `/sys/class/thermal/thermal_zone0/temp` | `system.repository.ts` (T-026) |
 
 `projectId`는 절대경로를 `/` → `-`로 치환한 형태다(`-home-dorage-workspace-app`). 역변환은 손실이 있어 best-effort이며, 트랜스크립트의 `cwd` 필드가 있으면 그쪽을 우선한다.

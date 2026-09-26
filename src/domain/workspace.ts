@@ -36,3 +36,33 @@ export interface WorkspaceRepo {
   /** main 첫 번째, 이어서 linked 이름순 */
   checkouts: WorkspaceCheckout[];
 }
+
+/** 화면의 소스 컨트롤 버튼 하나가 곧 동작 하나다. 메시지 입력 같은 추가 입력은 받지 않는다. */
+export type WorkspaceGitAction = "pull" | "commit" | "push";
+
+/** `git status --porcelain --branch` 한 번으로 얻는 것. 목록 API 와 달리 명령을 띄운다. */
+export interface WorkspaceGitStatus {
+  /** 브랜치. detached HEAD 면 null */
+  branch: string | null;
+  /** HEAD 커밋 전체 SHA. 커밋이 하나도 없으면 null */
+  head: string | null;
+  /** 추적 브랜치(`origin/main`). 없으면 null */
+  upstream: string | null;
+  /** upstream 보다 앞선 커밋 수. upstream 이 없으면 0 */
+  ahead: number;
+  behind: number;
+  /** 워킹 트리에서 달라진 항목 수(추적 안 된 파일 포함). commit 은 이것을 전부 담는다 */
+  changed: number;
+  /** 이 체크아웃이 서버 자신의 저장소인지. pull 만으로는 서버가 새 코드를 쓰지 않으므로 화면이 알린다 */
+  self: boolean;
+}
+
+export interface WorkspaceGitResult {
+  action: WorkspaceGitAction;
+  /** 화면에 그대로 보여 줄 한 줄. commit 이면 커밋 메시지(KST 시각) */
+  message: string;
+  /** git 이 표준 출력·오류에 남긴 것. 비어 있을 수 있다 */
+  output: string;
+  /** 동작 뒤 다시 읽은 상태 */
+  status: WorkspaceGitStatus;
+}

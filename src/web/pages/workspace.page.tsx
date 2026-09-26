@@ -3,6 +3,7 @@ import type { FsEntry } from "../../domain/types";
 import type { WorkspaceCheckout, WorkspaceRepo } from "../../domain/workspace";
 import { FileTree } from "../components/file-tree";
 import { FileView } from "../components/file-view";
+import { SourceControl } from "../components/source-control";
 import { Button, EmptyState, ErrorBox, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { tildePath } from "../lib/format";
@@ -152,6 +153,17 @@ export function WorkspacePage() {
           {checkout.branch ?? "detached"} · {checkout.head?.slice(0, 7) ?? "-"} ·{" "}
           {tildePath(checkout.path)}
         </div>
+
+        {/* 루트 밖 체크아웃은 서버가 git 을 돌려 주지 않는다(403). 파일과 같은 기준이다. */}
+        {checkoutRoot === null ? null : (
+          <SourceControl
+            repoId={repo.id}
+            checkout={checkout}
+            refreshToken={refreshToken}
+            onChanged={refresh}
+            confirmLeave={confirmLeave}
+          />
+        )}
 
         {checkoutRoot === null ? (
           <EmptyState title="이 체크아웃은 워크스페이스 루트 밖에 있습니다" hint={checkout.path} />

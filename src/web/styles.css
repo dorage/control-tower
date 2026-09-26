@@ -426,6 +426,63 @@ pre {
   text-overflow: ellipsis;
 }
 
+/* 브랜치 줄과 트리 사이의 소스 컨트롤(components/source-control.tsx). 접힌 모바일에서는 툴바와 함께 숨는다. */
+.files__scm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.files__scm-status {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files__scm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.files__scm-note {
+  font-size: 0.75rem;
+  color: var(--warning);
+  overflow-wrap: anywhere;
+}
+
+.files__scm-result {
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.files__scm-result--success {
+  color: var(--success);
+}
+
+.files__scm-result--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* git 출력은 길고 넓다. 섹션을 밀어내지 않게 높이를 자르고 스크롤로 본다. */
+.files__scm-output {
+  margin: 4px 0 0;
+  max-height: 8rem;
+  overflow: auto;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
 .files__toggle {
   display: inline-flex;
   align-items: center;

@@ -191,6 +191,7 @@ export function WorkspacePage() {
             path={fullPath}
             displayPath={path ?? undefined}
             dirtyRef={dirtyRef}
+            reloadSignal={refreshToken}
           />
         )}
       </div>

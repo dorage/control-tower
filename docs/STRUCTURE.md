@@ -124,7 +124,7 @@ control-tower/
         ├── components/
         │   ├── app-shell.tsx       ✅        헤더 + 사이드바 + 콘텐츠 Grid
         │   ├── file-tree.tsx       ✅        지연 로딩 트리 + 키보드 조작. `basePath` 로 뿌리를 옮길 수 있다
-        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다. HTML 은 미리보기를 html-preview 로 (T-028, T-030, T-031)
+        │   ├── file-view.tsx       ✅        파일 뷰어·에디터 패널(미리보기·원문·편집 3탭). 원문 탭은 색칠한다. HTML 은 미리보기를 html-preview 로. `reloadSignal` 로 바깥(pull·새로고침)이 재읽기를 요청한다 (T-028, T-030, T-031, #28)
         │   ├── html-preview.tsx    ✅        HTML 파일 → sandbox iframe(/raw/<root>/<path>). version 이 바뀌면 새로 만든다 (T-031)
         │   ├── source-control.tsx  ✅        워크스페이스 소스 컨트롤 섹션 - 상태 한 줄 + Pull·Commit·Push + 결과/출력 + 서버 자신 안내 (T-032)
         │   ├── markdown-editor.tsx ✅        textarea 에디터 · 편집 보조 · 충돌/초안 배너

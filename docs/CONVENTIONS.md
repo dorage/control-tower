@@ -8,11 +8,12 @@
 - 실행 `bun <file>`, 설치 `bun install`, 스크립트 `bun run <script>`, 실행기 `bunx`.
 - 서버는 항상 핫 리로드(`bun --hot`)로 띄운다. `dev`/`start` 스크립트 둘 다에 플래그가 박혀 있다. 핫 리로드가 곤란한 경우에만 `start:prod`를 쓴다.
 - 서버는 `Bun.serve()`. Express 등 HTTP 프레임워크를 추가하지 않는다.
-- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat·원자적 `rename`, `fs.service.ts`의 `realpath`, `system.repository.ts`의 `/proc` 순회(`readdir`), `git.repository.ts`의 `readdir`·`stat`·`realpath`, `src/db/*.db.ts`의 부모 디렉터리 생성(`mkdirSync`), 그리고 `scripts/*`·`test/*`·`*.test.ts`의 동기 읽기와 임시 디렉터리 조작.
+- 파일 IO는 `Bun.file` / `Bun.write` 우선. `node:fs`는 `Bun.file`로 불가능한 경우에만 명시적으로 import 한다. 현재 허용된 예외: `fs.repository.ts`의 디렉터리 순회·stat·원자적 `rename`, `fs.service.ts`의 `realpath`, `system.repository.ts`의 `/proc` 순회(`readdir`), `git.repository.ts`의 `readdir`·`stat`·`realpath`, `workspace.service.ts`의 `realpath`(서버 자신의 저장소 판별), `src/db/*.db.ts`의 부모 디렉터리 생성(`mkdirSync`), 그리고 `scripts/*`·`test/*`·`*.test.ts`의 동기 읽기와 임시 디렉터리 조작.
 - 환경변수는 `Bun.env`로 읽는다. `dotenv`를 쓰지 않는다(Bun이 `.env`를 자동 로드).
 - 번들러/개발서버는 Bun의 HTML import. `vite`/`webpack`/`esbuild`를 쓰지 않는다.
 - 테스트는 `bun test` (`import { test, expect } from "bun:test"`).
 - **주기적으로 도는 경로에서 외부 명령을 띄우지 않는다.** 호스트 지표는 `ps`/`top` 이 아니라 `/proc` 를 직접 읽는다. 이유는 두 가지다 — `ps` 의 `%cpu` 는 프로세스 수명 전체의 평균이라 "지금" 을 말해 주지 않고, 폴링마다 프로세스를 띄우는 것은 SD 카드에서 도는 기기에 대한 낭비다. 같은 이유로 저장소 메타데이터는 `git` 이 아니라 `.git` 아래 텍스트 파일을 직접 읽는다(형식은 gitrepository-layout(5) 로 공개된 규격이다).
+- **외부 명령을 띄우는 곳은 `git-command.repository.ts` 하나다(T-032).** 사람이 버튼을 눌러 한 번 도는 동작(pull·commit·push)만 거기서 `Bun.spawn` 으로 돈다. 폴링·목록·화면 열기 경로에서는 부르지 않는다. 띄울 때는 항상 묻지 않게(`GIT_TERMINAL_PROMPT=0`, ssh `BatchMode=yes`) 하고 시한을 건다 — 서버에는 터미널이 없어 프롬프트 하나가 요청을 영원히 세운다.
 
 ## 2. 의존성 정책
 
@@ -108,6 +109,7 @@ route  →  service  →  repository  →  disk
 
 - 파일시스템 API는 **설정된 루트 밖으로 절대 나가지 않는다.** 디스크에 닿는 모든 경로는 `src/services/fs.service.ts`의 `resolvePath(rootId, relPath)` 하나만 통과한다. 이 함수를 우회하는 경로 조립을 어디에도 두지 않는다.
 - `resolvePath` 절차(순서를 지킨다): ① `rootId` 없으면 400 → ② 미등록 루트면 403 → ③ `\0` 포함이면 400 → ④ 절대경로면 400 → ⑤ `resolve()`로 `..` 정규화 → ⑥ `candidate === root.path || candidate.startsWith(root.path + sep)` 포함 검사(구분자를 붙이지 않으면 `/home/u/work-secret`이 `/home/u/work`를 통과한다) → ⑦ `realpath` 결과로 ⑥을 한 번 더(없는 파일이면 부모 기준, 부모도 없으면 404).
+- **git 명령의 대상 경로는 클라이언트가 보내지 않는다.** `/api/workspace/git` 은 `{ repo, wt }` id 만 받고, 서버가 `listRepos()` 로 그 체크아웃을 다시 찾아 그 `path` 에서만 돈다(`requireCheckout`). 없으면 404, 루트 밖(`root: null`)이면 403. 절대경로를 받는 순간 "이 서버가 아무 디렉터리에서나 git 을 돌린다" 가 된다.
 - 쿼리 파라미터는 `URLSearchParams`가 이미 퍼센트 디코딩한다. `decodeURIComponent`를 **중복 호출하지 않는다** — 이중 디코딩은 `%252e%252e` 우회를 만든다.
 - 쓰기는 확장자 허용목록(기본 `.md`, `.markdown`)에 한정한다. 판정은 `isEditable(name)` 하나로 한다.
 - **쓰기 검사 순서가 곧 보안이다:** 본문 크기 → `resolvePath` → 확장자 허용목록 → 파일 접근(`statEntry`) → 낙관적 잠금 → 실제 쓰기. 확장자 검사를 경로 해석보다 앞에 두거나 파일 접근보다 뒤로 미루지 않는다.
@@ -213,7 +215,7 @@ route  →  service  →  repository  →  disk
 
 수치 목표를 강제하지 않는다. 대신 **다음 파일에 테스트가 하나도 없으면 안 된다**는 규칙만 둔다.
 
-`src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/services/system.service.ts` · `src/services/workspace.service.ts` · `src/repositories/system.repository.ts` · `src/repositories/git.repository.ts` · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
+`src/lib/*.ts` · `src/services/fs.service.ts` · `src/services/session.service.ts` · `src/services/watch.service.ts` · `src/services/telemetry.service.ts` · `src/services/system.service.ts` · `src/services/workspace.service.ts` · `src/repositories/system.repository.ts` · `src/repositories/git.repository.ts` · `src/repositories/git-command.repository.ts`(자기 테스트 파일은 없고 `workspace-git.service.test.ts` 가 실제 git 으로 거친다) · `src/web/lib/markdown.ts` · `src/web/lib/format.ts`
 
 `bun test --coverage` 기준 현황(2026-09-02):
 

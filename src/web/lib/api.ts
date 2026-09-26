@@ -10,7 +10,12 @@ import type {
   Timeline,
 } from "../../domain/types";
 import type { SystemMetrics } from "../../domain/system";
-import type { WorkspaceRepo } from "../../domain/workspace";
+import type {
+  WorkspaceGitAction,
+  WorkspaceGitResult,
+  WorkspaceGitStatus,
+  WorkspaceRepo,
+} from "../../domain/workspace";
 import type { Bucket, GroupBy, TelemetryStatus } from "../../domain/telemetry";
 
 export interface Page<T> {
@@ -174,6 +179,16 @@ export const api = {
     request<TelemetryLatency>(`/api/telemetry/latency${query({ ...opts })}`),
 
   workspaceRepos: () => request<Page<WorkspaceRepo>>("/api/workspace/repos"),
+
+  workspaceGitStatus: (repo: string, wt: string) =>
+    request<WorkspaceGitStatus>(`/api/workspace/git${query({ repo, wt })}`),
+
+  workspaceGit: (input: { repo: string; wt: string; action: WorkspaceGitAction }) =>
+    request<WorkspaceGitResult>("/api/workspace/git", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
 
   fsRoots: () => request<{ items: FsRoot[] }>("/api/fs/roots"),
 

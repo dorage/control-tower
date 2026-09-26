@@ -424,13 +424,98 @@ data: {"type":"change","fingerprint":"7c25f3de79f9391e","transcripts":1,"liveSes
 - 루트가 겹쳐 같은 저장소를 두 번 만나면 한 번만 싣는다.
 - 권한 오류로 읽을 수 없는 디렉터리는 그 가지만 포기하고 나머지를 돌려준다.
 
-**`git` 명령을 띄우지 않는다.** HEAD·브랜치·worktree 목록·잠금 사유는 전부 `.git` 아래 작은 텍스트 파일이고
+**이 목록 API 는 `git` 명령을 띄우지 않는다.** HEAD·브랜치·worktree 목록·잠금 사유는 전부 `.git` 아래 작은 텍스트 파일이고
 형식은 gitrepository-layout(5) 로 공개돼 있다. 화면을 열 때마다 도는 경로에서 프로세스를 띄우지 않는다는
 규칙(CONVENTIONS §1)을 따른다. 브랜치 SHA 는 `refs/heads/<branch>` 느슨한 파일에서, 없으면 `packed-refs` 에서 읽는다.
+git 을 실제로 띄우는 것은 아래 `/api/workspace/git` 뿐이다 — 사람이 버튼을 눌러 한 번 도는 동작이다(T-032).
 
 **파일은 이 API 로 읽지 않는다.** 화면은 `root` 와 `relPath` 를 받아 기존 `/api/fs/*` 로 연다.
 경로 관문(`resolvePath`)을 우회하는 길을 늘리지 않기 위해서다. 그래서 어느 루트에도 담기지 않은
 체크아웃은 목록에 나오되 `root: null` 이고, 화면은 열 수 없다고 안내한다.
+
+### `GET /api/workspace/git` ✅
+
+체크아웃 하나의 소스 컨트롤 상태. 워크스페이스 화면의 소스 컨트롤 섹션이 열릴 때와 동작 뒤에 읽는다 (T-032).
+
+| 파라미터 | 필수 | 설명 |
+| --- | --- | --- |
+| `repo` | ✅ | `GET /api/workspace/repos` 의 저장소 `id` |
+| `wt` | ✅ | 그 저장소의 체크아웃 `id` (`"main"` 또는 worktree 이름) |
+
+```json
+{
+  "branch": "main",
+  "head": "0c376001e0b9a2f1c3d4e5f60718293a4b5c6d7e",
+  "upstream": "origin/main",
+  "ahead": 1,
+  "behind": 0,
+  "changed": 3,
+  "self": false
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `branch` | string \| null | detached HEAD 면 `null` |
+| `head` | string \| null | HEAD 커밋 40자 SHA. 커밋이 없는 저장소면 `null` |
+| `upstream` | string \| null | 추적 브랜치(`origin/main`). 없거나 원격에서 사라졌으면(`[gone]`) `null` |
+| `ahead` · `behind` | number | 추적 브랜치 대비 앞선·뒤처진 커밋 수. `upstream` 이 `null` 이면 0 |
+| `changed` | number | 워킹 트리의 변경 항목 수. 추적 안 된 파일을 포함한다 - commit 이 전부 담기 때문 |
+| `self` | boolean | 이 체크아웃이 **서버 자신의 저장소**인지. 그러면 pull 뒤 `bun run restart` 가 필요하다(docs/README 자동 배포) |
+
+| 코드 | 상황 |
+| --- | --- |
+| 400 | `repo` 또는 `wt` 가 없다 |
+| 403 | 체크아웃이 워크스페이스 루트 밖(`root: null`)이다 |
+| 404 | 그 id 의 저장소나 체크아웃이 없다 |
+| 409 | `git status` 자체가 실패했다(`output` 에 git 의 말) |
+
+`git status --porcelain=v1 --branch` 한 번과 `git rev-parse HEAD` 한 번이다. 폴링하지 않는다.
+
+### `POST /api/workspace/git` ✅
+
+pull · commit · push 중 하나를 실행하고 끝난 뒤의 상태를 함께 돌려준다 (T-032).
+
+```json
+{ "repo": "control-tower", "wt": "main", "action": "commit" }
+```
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `repo` | ✅ | 저장소 `id` |
+| `wt` | ✅ | 체크아웃 `id` |
+| `action` | ✅ | `"pull"` \| `"commit"` \| `"push"` |
+
+응답 200:
+
+```json
+{
+  "action": "commit",
+  "message": "2026-09-26 14:03:05",
+  "output": "",
+  "status": { "branch": "main", "head": "…", "upstream": "origin/main", "ahead": 1, "behind": 0, "changed": 0, "self": false }
+}
+```
+
+| 필드 | 설명 |
+| --- | --- |
+| `message` | 화면에 그대로 보일 한 줄. commit 이면 커밋 메시지 자체(KST 시각) |
+| `output` | git 이 표준 출력·오류에 남긴 것. stderr 가 먼저 온다 |
+| `status` | 동작 뒤 다시 읽은 상태(위 GET 과 같은 형태) |
+
+| 코드 | 상황 |
+| --- | --- |
+| 400 | 본문이 JSON 객체가 아니거나 `repo`·`wt` 가 없거나 `action` 이 셋 밖이다 |
+| 403 · 404 | GET 과 같다 |
+| 409 | git 이 실패했다. `error` 에 첫 줄, `output` 에 전문. commit 은 변경이 없을 때 `nothing to commit`, push 는 detached HEAD 일 때 `detached HEAD cannot be pushed` |
+
+동작 규칙:
+
+- **pull 은 `git pull --ff-only`.** 갈라졌으면 409 다. 서버가 머지 커밋을 만들거나 충돌 마커를 파일에 남기지 않는다 — 그것을 정리할 곳은 터미널뿐이라서다.
+- **commit 은 `git add -A` 뒤 `git commit -m "<YYYY-MM-DD HH:MM:SS>"`.** 메시지는 `Asia/Seoul` 시각이고 프로세스 `TZ` 에 기대지 않는다. 메시지를 받는 필드는 없다. 신원은 서버 프로세스의 gitconfig 를 따른다.
+- **push 는 추적 브랜치가 있으면 `git push`, 없으면 `git push -u origin HEAD`.** 같은 이름으로 올리고 추적을 건다.
+- **대상은 절대경로가 아니라 id 다.** 서버가 목록을 다시 돌려 체크아웃을 찾고 그 경로에서만 git 을 돈다. 파일 API 가 `resolvePath` 하나로 루트를 지키는 것과 같다.
+- **묻지 않고, 기다리지 않는다.** `GIT_TERMINAL_PROMPT=0` 과 ssh `BatchMode=yes` 로 자격증명 프롬프트를 즉시 실패시키고, 60초를 넘기면 `SIGKILL` 한다. 인증은 서버 환경(credential helper, ssh 키)의 몫이다.
 
 ---
 

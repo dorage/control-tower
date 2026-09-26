@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { CodeBlock } from "./code-block";
 import { HtmlPreview } from "./html-preview";
 import { MarkdownEditor } from "./markdown-editor";
@@ -52,17 +52,23 @@ function useViewMode(): [ViewMode, (mode: ViewMode) => void] {
  * `path` 는 언제나 **루트 기준 전체 경로**다. 워크스페이스 화면처럼 사용자에게는 더 짧은
  * 경로를 보여주고 싶을 때 `displayPath` 로 표시만 갈아끼운다 — 링크·이미지 해석은
  * 전체 경로를 써야 하므로 표시와 실제를 나눈다.
+ *
+ * `reloadSignal` 은 바깥에서 "디스크가 바뀌었을 수 있다" 고 알리는 값이다. 워크스페이스의
+ * pull 이나 새로고침처럼 SSE 로는 오지 않는 변경 뒤에 올린다. 아래 실시간 갱신과 같은
+ * 규칙으로 처리한다 — 편집 중이면 읽지 않고 배너만 띄운다.
  */
 export function FileView({
   root,
   path,
   displayPath,
   dirtyRef,
+  reloadSignal,
 }: {
   root: string;
   path: string | null;
   displayPath?: string;
   dirtyRef: RefObject<boolean>;
+  reloadSignal?: number;
 }) {
   const editor = useEditorFile(root, path);
   const [mode, setMode] = useViewMode();
@@ -93,6 +99,23 @@ export function FileView({
     void editor.reload();
   }, 2000);
   useLiveChange(onLive, Boolean(path));
+
+  /**
+   * 바깥 신호는 디바운스 없이 바로 처리한다. 사람이 버튼을 눌러 생긴 변경이라 뭉칠 것이 없다.
+   * 첫 렌더의 값은 신호가 아니다 — 파일을 막 열었을 때 두 번 읽지 않게 건너뛴다.
+   */
+  const seenSignal = useRef(reloadSignal);
+  useEffect(() => {
+    if (reloadSignal === undefined || reloadSignal === seenSignal.current) return;
+    seenSignal.current = reloadSignal;
+    if (!path) return;
+    if (dirtyRef.current) {
+      setMaybeStale(true);
+      return;
+    }
+    void editor.reload();
+    // editor.reload 는 root/path 에만 묶인 콜백이라 신호가 바뀔 때만 돌면 된다.
+  }, [reloadSignal, path, dirtyRef, editor.reload]);
 
   if (!path) return <EmptyState title="파일을 선택하세요" hint="왼쪽 트리에서 파일을 고르면 내용이 보입니다." />;
   if (editor.loadError) {
